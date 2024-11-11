@@ -3,6 +3,32 @@ module clk;
   
 endmodule
 
+module fetch_buffer
+#(
+    parameter ADDR_WIDTH = 12,
+              INSTR_WIDTH = 32
+)
+(
+  input wire clk,
+  input wire [ADDR_WIDTH-1: 0] pc_in,
+  input [INSTR_WIDTH-1: 0] instr_in,
+  output wire [ADDR_WIDTH-1: 0] pc_out,
+  output [INSTR_WIDTH-1: 0] instr_out
+  
+);
+  reg [ADDR_WIDTH-1: 0] pc;
+  reg [INSTR_WIDTH-1: 0] instr;
+  
+  always@(posedge clk) begin
+    pc <= pc_in;
+    instr <= instr_in;
+  end
+
+  assign pc_out = pc;
+  assign instr_out = instr;
+
+endmodule
+
 module single_port_ROM 
 #(
     parameter ADDR_WIDTH = 12,
@@ -28,10 +54,13 @@ endmodule
 //TOP LEVEL MODULE
 module CPU(
 	input wire clk,
-  output wire [31:0] instruction //temporary
+  	output wire [31:0] cpu_instr_out,
+  	output wire [11:0] cpu_pc_out //temporary
 );
   
   reg [11:0] PC;
+  output wire [31:0] instruction;
+  
   
   initial begin
     PC = 0;
@@ -43,9 +72,18 @@ module CPU(
     .dout(instruction)
   );
   
+  fetch_buffer fetchBuf(
+    .clk(clk),
+    .pc_in(PC),
+    .instr_in(instruction),
+    .pc_out(cpu_pc_out),
+    .instr_out(cpu_instr_out)
+  );
+  
   //Update PC on the clk
   always @(posedge clk) begin
     PC <= PC + 4;
   end
 
 endmodule
+
