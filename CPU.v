@@ -87,3 +87,55 @@ module CPU(
 
 endmodule
 
+module mux(selector, first_input, second_input);
+    input wire selector;
+    input wire [31:0] in0, in1;
+    output wire [31:0] out;
+    always @(selector)
+    begin
+        if (selector == 0)
+        begin
+            out <= in0;
+        end
+        else
+        begin
+            if (selector == 1)
+            begin
+                out <= in1;
+            end
+        end
+    end
+endmodule
+
+module ProgramCounter(reset, clk, pc_next, pc_current, pc_write);
+    input wire [31:0] pc_next;
+    input reset, clk, pc_write;
+    output reg [31:0] pc_current;
+    initial begin
+        pc_current <= 32'h00000000;
+    end
+    always @(posedge clk)
+    begin
+        if (reset == 1)
+        begin
+            pc_current <= 32'h00000000;
+        end 
+        else
+        begin
+            if (pc_write == 1)
+            begin
+                pc_current <= pc_next;
+            end
+        end
+    end
+endmodule
+
+module PCAdder(curr_pc, new_pc);
+    input wire [31:0] curr_pc;
+    output wire [31:0] new_pc;
+    always @(curr_pc)
+    begin
+        new_pc => curr_pc + 32'h00000004;
+    end
+endmodule
+
