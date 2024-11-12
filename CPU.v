@@ -96,11 +96,13 @@ module mux
   assign out = (selector == 0) ? in0 : in1;
 endmodule
 
-module ProgramCounter(reset, clk, pc_next, pc_current, pc_write);
-    input wire [31:0] pc_next;
-    input reset, clk, pc_write;
-    output reg [31:0] pc_current;
-    initial begin
+module ProgramCounter
+(
+    input wire [31:0] pc_next,
+    input wire reset, clk, pc_write,
+    output reg [31:0] pc_current
+);
+  	initial begin
         pc_current <= 32'h00000000;
     end
     always @(posedge clk)
