@@ -87,24 +87,13 @@ module CPU(
 
 endmodule
 
-module mux(selector, first_input, second_input);
-    input wire selector;
-    input wire [31:0] in0, in1;
-    output wire [31:0] out;
-    always @(selector)
-    begin
-        if (selector == 0)
-        begin
-            out <= in0;
-        end
-        else
-        begin
-            if (selector == 1)
-            begin
-                out <= in1;
-            end
-        end
-    end
+module mux
+  (
+    input wire selector,
+    input wire [31:0] in0, in1,
+    output wire [31:0] out
+  );
+  assign out = (selector == 0) ? in0 : in1;
 endmodule
 
 module ProgramCounter(reset, clk, pc_next, pc_current, pc_write);
