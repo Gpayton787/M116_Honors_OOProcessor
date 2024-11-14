@@ -59,3 +59,26 @@ module control
     endcase
   end
 endmodule
+
+module ImmediateGenerator
+(
+    input wire [31:0] instruction,
+    output wire [31:0] immediate 
+);
+    always @(instruction)
+    begin
+        reg [6:0] opcode <= instruction[6:0];
+        reg [11:0] immR <= 32h'00000000;
+        reg [11:0] immI <= instruction[31:20];
+        reg [11:0] immS <= {instruction[31:25],instruction[11,7]};
+        reg [19:0] immLUI <= instruction[31:12];
+
+        case (opcode)
+            7b'0110011 : immediate <= immR; //add, xor
+            7b'0010011 : immediate <= {{20{immI[11]}},immI}; //addi, ori, srai
+            7b'0110111 : immediate <= {{12{immLUI[19]}},immLUI}; //lui
+            7b'0000011 : immediate <= {{20{immI[11]}}immI}; //lb, lw
+            7b'0100011 : immediate <= {20{immS[11]},immS}; //sb, sw
+        endcase
+    end
+endmodule
