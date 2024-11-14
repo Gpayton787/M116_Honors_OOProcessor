@@ -11,8 +11,19 @@
 `define F3_BYTE 3'b000
 `define F3_WORD 3'b010
 
-module decode;
-
+module decode(
+  input wire [11:0] pc_in,
+  input wire [31:0] instr_in,
+  output wire [6:0] c_sig_out,
+  output wire [11:0] pc_out
+);
+  
+  control my_control(
+    .instr_in(instr_in),
+    .c_sig_out(c_sig_out)
+  );
+  
+  assign pc_out = pc_in;
 endmodule
 
 
