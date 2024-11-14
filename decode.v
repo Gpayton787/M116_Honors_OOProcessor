@@ -15,12 +15,18 @@ module decode(
   input wire [11:0] pc_in,
   input wire [31:0] instr_in,
   output wire [6:0] c_sig_out,
-  output wire [11:0] pc_out
+  output wire [11:0] pc_out,
+  output wire [31:0] imm
 );
   
   control my_control(
     .instr_in(instr_in),
     .c_sig_out(c_sig_out)
+  );
+  
+  imm_gen my_imm_gen(
+    .instruction(instr_in),
+    .immediate(imm)
   );
   
   assign pc_out = pc_in;
@@ -60,25 +66,31 @@ module control
   end
 endmodule
 
-module ImmediateGenerator
+module imm_gen
 (
     input wire [31:0] instruction,
-    output wire [31:0] immediate 
+    output reg [31:0] immediate 
 );
+  reg [6:0] opcode;
+  reg [31:0] immR;
+  reg [11:0] immI;
+  reg [11:0] immS;
+  reg [19:0] immLUI;
+  
     always @(instruction)
     begin
-        reg [6:0] opcode <= instruction[6:0];
-        reg [11:0] immR <= 32h'00000000;
-        reg [11:0] immI <= instruction[31:20];
-        reg [11:0] immS <= {instruction[31:25],instruction[11,7]};
-        reg [19:0] immLUI <= instruction[31:12];
-
+      	opcode = instruction[6:0];
+        immR = 32'h00000000;
+		immI = instruction[31:20];
+      	immS = {instruction[31:25],instruction[11:7]};
+      	immLUI = instruction[31:12];
+      
         case (opcode)
-            7b'0110011 : immediate <= immR; //add, xor
-            7b'0010011 : immediate <= {{20{immI[11]}},immI}; //addi, ori, srai
-            7b'0110111 : immediate <= {{12{immLUI[19]}},immLUI}; //lui
-            7b'0000011 : immediate <= {{20{immI[11]}}immI}; //lb, lw
-            7b'0100011 : immediate <= {20{immS[11]},immS}; //sb, sw
+            7'b0110011 : immediate = immR; //add, xor
+            7'b0010011 : immediate = {{20{immI[11]}},immI}; //addi, ori, srai
+            7'b0110111 : immediate = {{12{immLUI[19]}},immLUI}; //lui
+          	7'b0000011 : immediate = {{20{immI[11]}},immI}; //lb, lw
+         	7'b0100011 : immediate = {{20{immS[11]}},immS}; //sb, sw
         endcase
     end
 endmodule
