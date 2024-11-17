@@ -1,26 +1,57 @@
+//INSTRUCTION OPCODES
 `define RTYPE_INSTR 7'b0110011
 `define ITYPE_INSTR 7'b0010011
-`define RTYPE_SIG 7'b1000000
-`define ITYPE_SIG 7'b1100000
 `define LOAD_INSTR 7'b0000011
 `define STORE_INSTR 7'b0100011
+`define LUI_INSTR 7'b0110111
+
+//FUNCT3S
+`define F3_BYTE 3'b000
+`define F3_WORD 3'b010
+`define F3_ADD 3'b000
+`define F3_OR 3'b110
+`define F3_XOR 3'b100
+`define F3_SHIFT 3'b101
+`define F3_AND 3'b111
+
+//SIGNALS
+`define RTYPE_SIG 7'b1000000
+`define ITYPE_SIG 7'b1100000
 `define LB_SIG 7'b1101011
 `define SB_SIG 7'b0100101
 `define LW_SIG 7'b1101010
 `define SW_SIG 7'b0100100
-`define F3_BYTE 3'b000
-`define F3_WORD 3'b010
+
+//ALUOP_SIGS
+`define ADD 3'b000
+`define SHIFT_LEFT 3'b001
+`define SHIFT_RIGHT 3'b010
+`define XOR 3'b011
+`define OR 3'b100
+`define AND 3'b101
+
 
 module decode(
   input wire [11:0] pc_in,
   input wire [31:0] instr_in,
   output wire [6:0] c_sig_out,
-  output wire [11:0] pc_out
+  output wire [2:0] alu_sig_out,
+  output wire [11:0] pc_out,
+  output wire [31:0] imm
 );
   
   control my_control(
     .instr_in(instr_in),
     .c_sig_out(c_sig_out)
+  );
+  
+  imm_gen my_imm_gen(
+    .instruction(instr_in),
+    .immediate(imm)
+  );
+  alu_control my_alu_control(
+    .instr_in(instr_in),
+    .alu_sig_out(alu_sig_out)
   );
   
   assign pc_out = pc_in;
@@ -36,10 +67,12 @@ module control
   input wire [INSTR_WIDTH-1: 0] instr_in,
   output reg [C_SIG_WIDTH-1: 0] c_sig_out
 );
-  wire [6:0] opcode = instr_in[6:0];
-  wire [2:0] funct3 = instr_in[14:12];
+  reg [6:0] opcode;
+  reg [2:0] funct3;
   
   always @(instr_in) begin
+    opcode = instr_in[6:0];
+    funct3 = instr_in[14:12];
     case(opcode)
       `RTYPE_INSTR: c_sig_out = `RTYPE_SIG;
       `ITYPE_INSTR: c_sig_out = `ITYPE_SIG;
@@ -58,4 +91,68 @@ module control
       default: c_sig_out = 7'b0000000;
     endcase
   end
+endmodule
+
+module alu_control
+#(
+    parameter INSTR_WIDTH = 32,
+  	parameter ALU_SIG_WIDTH = 3
+)
+(
+  input wire [INSTR_WIDTH-1: 0] instr_in,
+  output reg [ALU_SIG_WIDTH-1: 0] alu_sig_out
+);
+  reg [6:0] opcode;
+  reg [2:0] funct3;
+  
+  always @(instr_in) begin 
+    opcode = instr_in[6:0];
+    funct3 = instr_in[14:12];
+    if(opcode == `LOAD_INSTR || opcode == `STORE_INSTR) alu_sig_out = `ADD; 
+    else if(opcode == `LUI_INSTR) alu_sig_out = `SHIFT_LEFT;
+    else if(opcode == `RTYPE_INSTR) begin
+      if(funct3 == `F3_XOR) alu_sig_out = `XOR;
+      else if(funct3 == `F3_ADD) alu_sig_out = `ADD;
+      else if(funct3 == `F3_SHIFT) alu_sig_out = `SHIFT_RIGHT;
+      else $display("Unsupported R-Type Instruction cannot generate ALUOP opcode: %b, funct3: %b", opcode, funct3);
+    end
+    else if(opcode == `ITYPE_INSTR) begin
+      if(funct3 == `F3_SHIFT) alu_sig_out = `SHIFT_RIGHT;
+      else if(funct3 == `F3_OR) alu_sig_out = `OR;
+      else if(funct3 == `F3_ADD) alu_sig_out = `ADD;
+      else if(funct3 == `F3_AND) alu_sig_out = `AND;
+      else $display("Unsupported I-Type Instruction cannot generate ALUOP opcode: %b, funct3: %b", opcode, funct3);
+    end
+  end
+
+     
+endmodule
+
+module imm_gen
+(
+    input wire [31:0] instruction,
+    output reg [31:0] immediate 
+);
+  reg [6:0] opcode;
+  reg [31:0] immR;
+  reg [11:0] immI;
+  reg [11:0] immS;
+  reg [19:0] immLUI;
+  
+    always @(instruction)
+    begin
+      	opcode = instruction[6:0];
+        immR = 32'h00000000;
+		immI = instruction[31:20];
+      	immS = {instruction[31:25],instruction[11:7]};
+      	immLUI = instruction[31:12];
+      
+        case (opcode)
+            7'b0110011 : immediate = immR; //add, xor
+            7'b0010011 : immediate = {{20{immI[11]}},immI}; //addi, ori, srai
+            7'b0110111 : immediate = {{12{immLUI[19]}},immLUI}; //lui
+          	7'b0000011 : immediate = {{20{immI[11]}},immI}; //lb, lw
+         	7'b0100011 : immediate = {{20{immS[11]}},immS}; //sb, sw
+        endcase
+    end
 endmodule
