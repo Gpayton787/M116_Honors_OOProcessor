@@ -36,7 +36,8 @@ module decode(
   input wire [31:0] instr_in,
   output wire [6:0] c_sig_out,
   output wire [2:0] alu_sig_out,
-  output wire [11:0] pc_out,
+  output reg [31:0] instr_out,
+  output reg [11:0] pc_out,
   output wire [31:0] imm
 );
   
@@ -54,7 +55,10 @@ module decode(
     .alu_sig_out(alu_sig_out)
   );
   
-  assign pc_out = pc_in;
+  always @(instr_in or pc_in) begin
+    instr_out = instr_in;
+    pc_out = pc_in;
+  end
 endmodule
 
 
@@ -123,6 +127,7 @@ module alu_control
       else if(funct3 == `F3_AND) alu_sig_out = `AND;
       else $display("Unsupported I-Type Instruction cannot generate ALUOP opcode: %b, funct3: %b", opcode, funct3);
     end
+    else alu_sig_out = 3'b0;
   end
 
      
@@ -153,6 +158,7 @@ module imm_gen
             7'b0110111 : immediate = {{12{immLUI[19]}},immLUI}; //lui
           	7'b0000011 : immediate = {{20{immI[11]}},immI}; //lb, lw
          	7'b0100011 : immediate = {{20{immS[11]}},immS}; //sb, sw
+          default: immediate = 0;
         endcase
     end
 endmodule
