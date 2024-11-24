@@ -42,6 +42,16 @@ module CPU(
   wire [2:0] db_alu_sig_out;
   wire [31:0] db_imm_out;
   
+  //RENAME OUTPUTS
+  wire [PREG_WIDTH-1:0] rename_rrd_out;
+  wire [PREG_WIDTH-1:0] rename_rrs1_out;
+  wire [PREG_WIDTH-1:0] rename_rrs2_out;
+  wire [PREG_WIDTH-1:0] rename_old_rd_out;
+  
+  //ROB OUTPUTS
+  wire rob_push;
+  wire [PREG_WIDTH-1:0] rob_free_reg;
+  
   assign cpu_f_instr_out = fb_instr_out;
   assign cpu_d_instr_out = db_instr_out;
   assign cpu_d_c_sig_out = db_c_sig_out;
@@ -87,6 +97,19 @@ module CPU(
     .c_sig_out(db_c_sig_out),
     .alu_sig_out(db_alu_sig_out),
     .imm_out(db_imm_out)
+  );
+  
+  rename my_rename(
+    .clk(clk),
+    .rst(rst),
+    .c_sig(db_c_sig_out),
+    .push_free_reg(rob_push),
+    .freed_reg(rob_free_reg),
+    .instr_in(db_instr_out),
+    .rrd_out(rename_rrd_out),
+    .rrs1_out(rename_rrs1_out),
+    .rrs2_out(rename_rrs2_out),
+    .old_rd_out(rename_old_rd_out)
   );
   
   
