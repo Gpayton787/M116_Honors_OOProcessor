@@ -1,4 +1,7 @@
+`include "constants.v"
+
 module rename#(
+  C_SIG_WIDTH = 7,
   PREG_WIDTH = 6,
   AREG_WIDTH = 5
   
@@ -6,34 +9,45 @@ module rename#(
 (
   input wire clk,
   input wire rst,
-  input wire reg_write,
   input wire push_free_reg,
   input wire [PREG_WIDTH-1:0] freed_reg,
-  input wire [AREG_WIDTH*3-1:0] rd_rs1_rs2_in,
-  output reg [AREG_WIDTH*3-1:0] rd_rs1_rs2_out
+  input wire [C_SIG_WIDTH-1:0] c_sig,
+  input wire [31:0] instr_in,
+  output reg [PREG_WIDTH-1:0] rrd_out,
+  output reg [PREG_WIDTH-1:0] rrs1_out,
+  output reg [PREG_WIDTH-1:0] rrs2_out,
+  output reg [PREG_WIDTH-1:0] old_rd_out
 );
   
+  wire reg_write;
   reg [AREG_WIDTH-1:0] rd;
   reg [AREG_WIDTH-1:0] rs1;
   reg [AREG_WIDTH-1:0] rs2;
-  reg [PREG_WIDTH-1:0] rrd;
-  reg [PREG_WIDTH-1:0] old_rd;
-  reg [PREG_WIDTH-1:0] rrs1;
-  reg [PREG_WIDTH-1:0] rrs2;
   reg empty;
   reg full;
+  
+  assign reg_write = c_sig[`REG_WRITE];
   
   free_pool my_free_pool(
     .clk(clk),
     .rst(rst),
+    .push(push_free_reg),
     .pop(reg_write),
     .data_in(freed_reg),
-    .data_out(rrd),
+    .data_out(rrd_out),
     .empty(empty),
     .full(full)
   );
   
-  
+  //When a new instruction comes in, set regs
+  always @(instr_in) begin
+    rd = instr_in[11:7];
+    rs1 = instr_in[19:15];
+    rs2 = instr_in[24:20];
+    $display("instr: %h rd: %d, rs1: %d, rs2: %d", instr_in, rd, rs1, rs2);
+  end
+    
+ 
   
   /*
   Areg_file my_areg_file(
