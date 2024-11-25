@@ -9,6 +9,10 @@ module tb;
   wire [6:0] tb_d_c_sig;
   wire [2:0] tb_d_alu_sig;
   wire [31:0] tb_d_imm;
+  wire [5:0] tb_r_rrd_out;
+  wire [5:0] tb_r_rrs1_out;
+  wire [5:0] tb_r_rrs2_out;
+  
   
   
   //Instantiate modules
@@ -19,7 +23,10 @@ module tb;
     .cpu_d_instr_out(tb_d_instr),
     .cpu_d_c_sig_out(tb_d_c_sig),
     .cpu_d_imm_out(tb_d_imm),
-    .cpu_d_alu_sig_out(tb_d_alu_sig)
+    .cpu_d_alu_sig_out(tb_d_alu_sig),
+    .cpu_r_rrd_out(tb_r_rrd_out),
+    .cpu_r_rrs1_out(tb_r_rrs1_out),
+    .cpu_r_rrs2_out(tb_r_rrs2_out)
   );
 
   initial begin
@@ -35,7 +42,7 @@ module tb;
   
   always @(posedge tb_clk) begin
     tb_cycle_count <= tb_cycle_count + 1;
-    $display("Cycle: %0d, FETCH| instr: %h DECODE| instr: %h c_sig: %b alu_sig: %b, imm: %0d", tb_cycle_count, tb_f_instr, tb_d_instr, tb_d_c_sig, tb_d_alu_sig, tb_d_imm);
+    $display("Cycle: %0d, FETCH| instr: %h DECODE| instr: %h c_sig: %b alu_sig: %b, imm: %0d RENAME | rrd: %d, rrs1: %d, rrs2: %d", tb_cycle_count, tb_f_instr, tb_d_instr, tb_d_c_sig, tb_d_alu_sig, tb_d_imm, tb_r_rrd_out, tb_r_rrs1_out, tb_r_rrs2_out);
   end
   
   initial begin

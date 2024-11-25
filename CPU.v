@@ -12,7 +12,11 @@ module CPU(
   output wire [31:0] cpu_d_instr_out, //temporary
   output wire [6:0] cpu_d_c_sig_out, //temporary
   output wire [31:0] cpu_d_imm_out, //temporary
-  output wire [2:0] cpu_d_alu_sig_out //temporary
+  output wire [2:0] cpu_d_alu_sig_out, //temporary
+  output wire [5:0] cpu_r_rrd_out,
+  output wire [5:0] cpu_r_rrs1_out,
+  output wire [5:0] cpu_r_rrs2_out
+  
 );
   //Parameters
   parameter PREG_WIDTH = 6;
@@ -52,12 +56,15 @@ module CPU(
   wire rob_push;
   wire [PREG_WIDTH-1:0] rob_free_reg;
   
+  //Assign to CPU outputs
   assign cpu_f_instr_out = fb_instr_out;
   assign cpu_d_instr_out = db_instr_out;
   assign cpu_d_c_sig_out = db_c_sig_out;
   assign cpu_d_imm_out = db_imm_out;
   assign cpu_d_alu_sig_out  = db_alu_sig_out;
-  
+  assign cpu_r_rrd_out = rename_rrd_out;
+  assign cpu_r_rrs1_out = rename_rrs1_out;
+  assign cpu_r_rrs2_out = rename_rrs2_out;
   
   
   //Module instantiations
@@ -109,7 +116,7 @@ module CPU(
     .rrd_out(rename_rrd_out),
     .rrs1_out(rename_rrs1_out),
     .rrs2_out(rename_rrs2_out),
-    .old_rd_out(rename_old_rd_out)
+    .rd_old_tag_out(rename_old_rd_out)
   );
   
   
