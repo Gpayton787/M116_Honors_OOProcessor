@@ -20,7 +20,7 @@ module CPU(
 );
   //Parameters
   parameter PREG_WIDTH = 6;
-  parameter AREG_WDITH = 5;
+  parameter AREG_WIDTH = 5;
   
   //Internal wires to connect modules
   
@@ -45,6 +45,19 @@ module CPU(
   wire [6:0] db_c_sig_out;
   wire [2:0] db_alu_sig_out;
   wire [31:0] db_imm_out;
+  
+  //RENAME LOGIC WIRES
+  wire r_reg_write;
+  wire [AREG_WIDTH-1:0] rd;
+  wire [AREG_WIDTH-1:0] rs1;
+  wire [AREG_WIDTH-1:0] rs2;
+  wire empty;
+  wire full;
+  
+  assign r_reg_write = db_c_sig_out[`REG_WRITE];
+  assign rd = db_instr_out[11:7];
+  assign rs1 = db_instr_out[19:15];
+  assign rs2 = db_instr_out[24:20];
   
   //RENAME OUTPUTS
   wire [PREG_WIDTH-1:0] rename_rrd_out;
@@ -105,7 +118,8 @@ module CPU(
     .alu_sig_out(db_alu_sig_out),
     .imm_out(db_imm_out)
   );
-  
+ 
+ /*
   rename my_rename(
     .clk(clk),
     .rst(rst),
@@ -118,8 +132,34 @@ module CPU(
     .rrs2_out(rename_rrs2_out),
     .rd_old_tag_out(rename_old_rd_out)
   );
+  */
+  
+  //ARF
+  Areg_file my_areg_file(
+    .clk(clk),
+    .rst(rst),
+    .rd_tag_idx(rd),
+    .rs1_tag_idx(rs1),
+    .rs2_tag_idx(rs2),
+    .reg_write(r_reg_write),
+    .rd_tag(rename_rrd_out),
+    .rs1_tag(rename_rrs1_out),
+    .rs2_tag(rename_rrs2_out),
+    .rd_old_tag(rename_old_rd_out)
+  );
+  
+  //Free Pool
+  free_pool my_free_pool(
+    .clk(clk),
+    .rst(rst),
+    .push(rob_push),
+    .pop(r_reg_write),
+    .data_in(rob_free_reg),
+    .data_out(rename_rrd_out),
+    .empty(empty),
+    .full(full)
+  );
+  
   
   
 endmodule
-
-
