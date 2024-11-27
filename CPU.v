@@ -20,7 +20,8 @@ module CPU(
 );
   //Parameters
   parameter PREG_WIDTH = 6;
-  parameter AREG_WDITH = 5;
+  parameter AREG_WIDTH = 5;
+  parameter DATA_WIDTH = 32;
   
   //Internal wires to connect modules
   
@@ -46,15 +47,36 @@ module CPU(
   wire [2:0] db_alu_sig_out;
   wire [31:0] db_imm_out;
   
+  //RENAME LOGIC WIRES
+  wire r_reg_write;
+  wire [AREG_WIDTH-1:0] rd;
+  wire [AREG_WIDTH-1:0] rs1;
+  wire [AREG_WIDTH-1:0] rs2;
+  wire empty;
+  wire full;
+  
+  assign r_reg_write = db_c_sig_out[`REG_WRITE];
+  assign rd = db_instr_out[11:7];
+  assign rs1 = db_instr_out[19:15];
+  assign rs2 = db_instr_out[24:20];
+  
   //RENAME OUTPUTS
   wire [PREG_WIDTH-1:0] rename_rrd_out;
   wire [PREG_WIDTH-1:0] rename_rrs1_out;
   wire [PREG_WIDTH-1:0] rename_rrs2_out;
   wire [PREG_WIDTH-1:0] rename_old_rd_out;
+  wire [DATA_WIDTH-1:0] data_rrs1_out;
+  wire [DATA_WIDTH-1:0] data_rrs2_out;
+  wire ready_rrs1_out;
+  wire ready_rrs2_out;
   
   //ROB OUTPUTS
   wire rob_push;
   wire [PREG_WIDTH-1:0] rob_free_reg;
+  
+  //RS to FU WIRES
+  wire [2:0] rs_fu_in;
+  wire [2:0] rs_fu_out;
   
   //Assign to CPU outputs
   assign cpu_f_instr_out = fb_instr_out;
@@ -105,7 +127,8 @@ module CPU(
     .alu_sig_out(db_alu_sig_out),
     .imm_out(db_imm_out)
   );
-  
+ 
+ /*
   rename my_rename(
     .clk(clk),
     .rst(rst),
@@ -117,6 +140,57 @@ module CPU(
     .rrs1_out(rename_rrs1_out),
     .rrs2_out(rename_rrs2_out),
     .rd_old_tag_out(rename_old_rd_out)
+  );
+  */
+  
+  //ARF
+  Areg_file my_areg_file(
+    .clk(clk),
+    .rst(rst),
+    .rd_tag_idx(rd),
+    .rs1_tag_idx(rs1),
+    .rs2_tag_idx(rs2),
+    .reg_write(r_reg_write),
+    .rd_tag(rename_rrd_out),
+    .rs1_tag(rename_rrs1_out),
+    .rs2_tag(rename_rrs2_out),
+    .rs1_data(data_rrs1_out),
+    .rs2_data(data_rrs2_out),
+    .rs1_ready(ready_rrs1_out),
+    .rs2_ready(ready_rrs2_out),
+    .rd_old_tag(rename_old_rd_out)
+  );
+  
+  //Free Pool
+  free_pool my_free_pool(
+    .clk(clk),
+    .rst(rst),
+    .push(rob_push),
+    .pop(r_reg_write),
+    .data_in(rob_free_reg),
+    .data_out(rename_rrd_out),
+    .empty(empty),
+    .full(full)
+  );
+  
+  rs my_rs(
+    .instr(db_instr_out),
+    .imm(db_imm_out),
+    .rd(rename_rrd_out),
+    .src1(rename_rrs1_out),
+    .data1(data_rrs1_out),
+    .ready1(ready_rrs1_out),
+    .src2(rename_rrs2_out),
+    .data2(data_rrs2_out),
+    .ready2(ready_rrs2_out),
+    .clk(clk),
+    .fu_in(rs_fu_in),
+    .fu_out(rs_fu_out)
+  );
+  
+  fu my_fu(
+    .ready_in(rs_fu_out),
+    .ready_out(rs_fu_in)
   );
   
   
