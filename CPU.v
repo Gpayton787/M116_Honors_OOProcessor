@@ -21,6 +21,7 @@ module CPU(
   //Parameters
   parameter PREG_WIDTH = 6;
   parameter AREG_WIDTH = 5;
+  parameter DATA_WIDTH = 32;
   
   //Internal wires to connect modules
   
@@ -59,15 +60,36 @@ module CPU(
   assign rs1 = db_instr_out[19:15];
   assign rs2 = db_instr_out[24:20];
   
+  //RENAME LOGIC WIRES
+  wire r_reg_write;
+  wire [AREG_WIDTH-1:0] rd;
+  wire [AREG_WIDTH-1:0] rs1;
+  wire [AREG_WIDTH-1:0] rs2;
+  wire empty;
+  wire full;
+  
+  assign r_reg_write = db_c_sig_out[`REG_WRITE];
+  assign rd = db_instr_out[11:7];
+  assign rs1 = db_instr_out[19:15];
+  assign rs2 = db_instr_out[24:20];
+  
   //RENAME OUTPUTS
   wire [PREG_WIDTH-1:0] rename_rrd_out;
   wire [PREG_WIDTH-1:0] rename_rrs1_out;
   wire [PREG_WIDTH-1:0] rename_rrs2_out;
   wire [PREG_WIDTH-1:0] rename_old_rd_out;
+  wire [DATA_WIDTH-1:0] data_rrs1_out;
+  wire [DATA_WIDTH-1:0] data_rrs2_out;
+  wire ready_rrs1_out;
+  wire ready_rrs2_out;
   
   //ROB OUTPUTS
   wire rob_push;
   wire [PREG_WIDTH-1:0] rob_free_reg;
+  
+  //RS to FU WIRES
+  wire [2:0] rs_fu_in;
+  wire [2:0] rs_fu_out;
   
   //Assign to CPU outputs
   assign cpu_f_instr_out = fb_instr_out;
@@ -118,6 +140,8 @@ module CPU(
     .alu_sig_out(db_alu_sig_out),
     .imm_out(db_imm_out)
   );
+ 
+ /*
  
  /*
   rename my_rename(
