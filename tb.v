@@ -1,4 +1,4 @@
-// Read trace into instruction memory
+`include "constants.v"
 
 module tb;
   reg [31:0] tb_cycle_count;
@@ -42,7 +42,14 @@ module tb;
   
   always @(posedge tb_clk) begin
     tb_cycle_count <= tb_cycle_count + 1;
-    $display("Cycle: %0d, FETCH| instr: %h DECODE| instr: %h c_sig: %b alu_sig: %b, imm: %0d RENAME | rrd: %d, rrs1: %d, rrs2: %d", tb_cycle_count, tb_f_instr, tb_d_instr, tb_d_c_sig, tb_d_alu_sig, tb_d_imm, tb_r_rrd_out, tb_r_rrs1_out, tb_r_rrs2_out);
+    $write("Cycle: %0d", tb_cycle_count);
+    $write(" FETCH | instr: %h, opcode: %b",tb_f_instr,tb_f_instr[`OPCODE]);
+    
+    //$write(" DECODE | instr: %h c_sig: %b alu_sig: %b, imm: %0d", tb_d_instr, tb_d_c_sig, tb_d_alu_sig, tb_d_imm);
+    //$display(" RENAME |rrd: %d, rrs1: %d, rrs2: %d", tb_r_rrd_out, tb_r_rrs1_out, tb_r_rrs2_out);
+    
+    $display("ISSUE to LSQ | 
+    
   end
   
   initial begin
