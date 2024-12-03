@@ -26,3 +26,4 @@
 `define LSQ_IS_LOAD 76
 `define LSQ_ENTRY 77
 
+`define OPCODE 6:0
