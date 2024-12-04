@@ -60,3 +60,11 @@
 `define OR 3'b100
 `define AND 3'b101
 
+
+`define LSQ_DATA 31:0
+`define LSQ_ADDR 63:32
+`define LSQ_PC 75:64
+`define LSQ_IS_LOAD 76
+`define LSQ_ENTRY 77
+
+`define OPCODE 6:0

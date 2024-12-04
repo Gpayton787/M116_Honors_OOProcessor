@@ -1,4 +1,4 @@
-// Read trace into instruction memory
+`include "constants.v"
 
 module tb;
   reg [31:0] tb_cycle_count;
