@@ -3,6 +3,7 @@
 `include "decode.v"
 `include "rename.v"
 `include "decode_buffer.v"
+`include "lsq.sv"
 
 //TOP LEVEL MODULE
 module CPU(
@@ -15,13 +16,13 @@ module CPU(
   output wire [2:0] cpu_d_alu_sig_out, //temporary
   output wire [5:0] cpu_r_rrd_out,
   output wire [5:0] cpu_r_rrs1_out,
-  output wire [5:0] cpu_r_rrs2_out
+  output wire [5:0] cpu_r_rrs2_out,
+  output wire [`LSQ_ENTRY-1:0] cpu_curr_lsq
   
 );
   //Parameters
   parameter PREG_WIDTH = 6;
   parameter AREG_WIDTH = 5;
-  parameter DATA_WIDTH = 32;
   
   //Internal wires to connect modules
   
@@ -46,19 +47,11 @@ module CPU(
   wire [6:0] db_c_sig_out;
   wire [2:0] db_alu_sig_out;
   wire [31:0] db_imm_out;
-  
-  //RENAME LOGIC WIRES
-  wire r_reg_write;
-  wire [AREG_WIDTH-1:0] rd;
-  wire [AREG_WIDTH-1:0] rs1;
-  wire [AREG_WIDTH-1:0] rs2;
-  wire empty;
-  wire full;
-  
-  assign r_reg_write = db_c_sig_out[`REG_WRITE];
-  assign rd = db_instr_out[11:7];
-  assign rs1 = db_instr_out[19:15];
-  assign rs2 = db_instr_out[24:20];
+
+  //LOGIC WIRES AFTER DECODE BUFFER
+  wire [6:0] db_opcode;
+
+  assign db_opcode = db_instr_out[`OPCODE];
   
   //RENAME LOGIC WIRES
   wire r_reg_write;
@@ -78,18 +71,25 @@ module CPU(
   wire [PREG_WIDTH-1:0] rename_rrs1_out;
   wire [PREG_WIDTH-1:0] rename_rrs2_out;
   wire [PREG_WIDTH-1:0] rename_old_rd_out;
-  wire [DATA_WIDTH-1:0] data_rrs1_out;
-  wire [DATA_WIDTH-1:0] data_rrs2_out;
-  wire ready_rrs1_out;
-  wire ready_rrs2_out;
+
+  //DISPATCH LOGIC WIRES
+  wire di_mem_re;
+  wire di_mem_wr;
+
+  assign di_mem_re = db_c_sig_out[`MEMRE];
+  assign di_mem_wr = db_c_sig_out[`MEMWR];
   
   //ROB OUTPUTS
   wire rob_push;
   wire [PREG_WIDTH-1:0] rob_free_reg;
-  
-  //RS to FU WIRES
-  wire [2:0] rs_fu_in;
-  wire [2:0] rs_fu_out;
+
+  //LSQ WIRES
+  wire [31:0] lsq_address_in;  
+  wire [31:0] lsq_data_in; 
+  wire [31:0] lsq_address_out;  
+  wire [31:0] lsq_data_out; 
+
+  wire [`LSQ_ENTRY:0] lsq_curr_entry;
   
   //Assign to CPU outputs
   assign cpu_f_instr_out = fb_instr_out;
@@ -100,6 +100,7 @@ module CPU(
   assign cpu_r_rrd_out = rename_rrd_out;
   assign cpu_r_rrs1_out = rename_rrs1_out;
   assign cpu_r_rrs2_out = rename_rrs2_out;
+  assign cpu_curr_lsq = lsq_curr_entry;
   
   
   //Module instantiations
@@ -142,8 +143,6 @@ module CPU(
   );
  
  /*
- 
- /*
   rename my_rename(
     .clk(clk),
     .rst(rst),
@@ -184,6 +183,21 @@ module CPU(
     .full(full)
   );
   
-  
-  
+  lsq my_lsq(
+    .clk(clk),
+ 	.rst(rst),
+    .wr_en(di_mem_re || di_mem_wr),
+    .opcode(db_opcode),
+    .pc(db_pc_out),
+    .address_in(lsq_address_in),   
+    .data_in(lsq_data_in),  
+  // Outputs
+    .curr_entry(lsq_curr_entry),
+    .address_out(lsq_address_out),       
+    .data_out(lsq_data_out)    
+  );
+
+ 
 endmodule
+
+

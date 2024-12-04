@@ -1,35 +1,4 @@
-//INSTRUCTION OPCODES
-`define RTYPE_INSTR 7'b0110011
-`define ITYPE_INSTR 7'b0010011
-`define LOAD_INSTR 7'b0000011
-`define STORE_INSTR 7'b0100011
-`define LUI_INSTR 7'b0110111
-
-//FUNCT3S
-`define F3_BYTE 3'b000
-`define F3_WORD 3'b010
-`define F3_ADD 3'b000
-`define F3_OR 3'b110
-`define F3_XOR 3'b100
-`define F3_SHIFT 3'b101
-`define F3_AND 3'b111
-
-//SIGNALS
-`define RTYPE_SIG 7'b1000000
-`define ITYPE_SIG 7'b1100000
-`define LB_SIG 7'b1101011
-`define SB_SIG 7'b0100101
-`define LW_SIG 7'b1101010
-`define SW_SIG 7'b0100100
-
-//ALUOP_SIGS
-`define ADD 3'b000
-`define SHIFT_LEFT 3'b001
-`define SHIFT_RIGHT 3'b010
-`define XOR 3'b011
-`define OR 3'b100
-`define AND 3'b101
-
+`include "constants.v"
 
 module decode(
   input wire [11:0] pc_in,

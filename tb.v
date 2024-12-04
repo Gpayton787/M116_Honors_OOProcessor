@@ -12,6 +12,7 @@ module tb;
   wire [5:0] tb_r_rrd_out;
   wire [5:0] tb_r_rrs1_out;
   wire [5:0] tb_r_rrs2_out;
+  wire [76:0] tb_cpu_curr_lsq;
   
   
   
@@ -26,7 +27,8 @@ module tb;
     .cpu_d_alu_sig_out(tb_d_alu_sig),
     .cpu_r_rrd_out(tb_r_rrd_out),
     .cpu_r_rrs1_out(tb_r_rrs1_out),
-    .cpu_r_rrs2_out(tb_r_rrs2_out)
+    .cpu_r_rrs2_out(tb_r_rrs2_out),
+    .cpu_curr_lsq(tb_cpu_curr_lsq)
   );
 
   initial begin
@@ -42,7 +44,15 @@ module tb;
   
   always @(posedge tb_clk) begin
     tb_cycle_count <= tb_cycle_count + 1;
-    $display("Cycle: %0d, FETCH| instr: %h DECODE| instr: %h c_sig: %b alu_sig: %b, imm: %0d RENAME | rrd: %d, rrs1: %d, rrs2: %d", tb_cycle_count, tb_f_instr, tb_d_instr, tb_d_c_sig, tb_d_alu_sig, tb_d_imm, tb_r_rrd_out, tb_r_rrs1_out, tb_r_rrs2_out);
+    $write("Cycle: %0d", tb_cycle_count);
+    $write(" FETCH | instr: %h",tb_f_instr);
+    
+    //$write(" DECODE | instr: %h c_sig: %b alu_sig: %b, imm: %0d", tb_d_instr, tb_d_c_sig, tb_d_alu_sig, tb_d_imm);
+    //$display(" RENAME |rrd: %d, rrs1: %d, rrs2: %d", tb_r_rrd_out, tb_r_rrs1_out, tb_r_rrs2_out);
+    
+    $display(" | LSQ Entry: %b", tb_cpu_curr_lsq);
+    
+    
   end
   
   initial begin
