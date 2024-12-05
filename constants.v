@@ -71,4 +71,4 @@
 //MISC
 `define INSTR_WIDTH 32
 `define DATA_WIDTH 32
-`define MEM_ADDR_WIDTH 20
+`define ADDR_WIDTH 20

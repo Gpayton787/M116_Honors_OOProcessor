@@ -1,7 +1,5 @@
 module single_port_mem #(
-    parameter READ_LATENCY = 10,
-    parameter WRITE_LATENCY = 10,
-    parameter DATA_WIDTH = 8,
+    parameter LATENCY = 10,
     parameter ADDR_WIDTH = 20
 )
 (
@@ -11,24 +9,61 @@ module single_port_mem #(
     input mem_re,
     input mem_wr,
     input wire [ADDR_WIDTH-1 : 0] address,
-    inout wire [DATA_WIDTH-1 : 0] data
+    input wire [31: 0] data_in,
+    output reg [31: 0] data_out,
+    output reg mem_done
 );
 
     //Byte Addressable Main Memory, 1MB
-    reg [DATA_WIDTH-1:0] mem[0:2**ADDR_WIDTH-1];
-    reg [DATA_WIDTH-1:0] temp_data;
+    reg [7:0] mem[0:2**ADDR_WIDTH-1];
+    reg [3:0] counter; //Tracks 10 cycles
+    reg busy;
+  	reg pending_mem_wr;
+    reg [ADDR_WIDTH-1:0] pending_address; // Address in process
+    reg [31:0] pending_data;    // Data to write during a write operation
 
-    always @(posedge clk) begin
-        if(cs & mem_wr) begin
-          mem[address] <= data;
+    always @(posedge clk or posedge rst) begin
+      
+      $display("busy: %b, counter: %d, pending_address: %0h, pending_data: %0h", busy, counter, pending_address, pending_data);
+      
+        if(rst) begin
+            counter <= 0;
+            busy <= 0;
+            mem_done <= 0;
+            data_out <= 0;
+        end else begin
+            //If we're not busy and we're enabled
+            if(!busy && cs) begin
+                //If we're a read or write
+                if(mem_wr || mem_re) begin
+                  	pending_mem_wr <= mem_wr;
+                    pending_address <= address;
+                    if(mem_wr) begin
+                        pending_data <= data_in;
+                    end
+                  	
+                    busy <= 1;
+                    mem_done <= 0;
+                    counter <= LATENCY;
+                end
+
+            end
+            else if (counter>0) begin
+                counter <= counter-1;
+            end
+            else if (busy && counter == 0) begin
+                //If we're working and once the counter has reached 0
+              if(pending_mem_wr) begin
+                  mem[pending_address] <= pending_data;
+                end
+                else begin
+                  	$display("set data out");
+                    data_out <= mem[pending_address];
+                end
+
+                busy <= 0;
+                mem_done <= 1;
+            end
         end
     end
-
-    always @(posedge clk) begin
-        if(cs & !mem_wr) begin
-            temp_data <= mem[address];
-        end
-    end
-
-    assign data = cs & mem_re & !mem_wr ? temp_data : 'hz;
 endmodule
