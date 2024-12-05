@@ -42,7 +42,7 @@ module lsq #(
   end
   
   //Combinational logic
-  always @(*) begin
+  always @(opcode or head_ptr) begin
     curr_entry = lsq[head_ptr-1];
     case (opcode)
         `LOAD_INSTR:  is_load = 1;

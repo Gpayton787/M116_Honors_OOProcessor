@@ -66,3 +66,9 @@
 `define LSQ_PC 75:64
 `define LSQ_IS_LOAD 76
 `define LSQ_ENTRY 77
+
+
+//MISC
+`define INSTR_WIDTH 32
+`define DATA_WIDTH 32
+`define MEM_ADDR_WIDTH 20

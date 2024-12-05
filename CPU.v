@@ -4,6 +4,7 @@
 `include "rename.v"
 `include "decode_buffer.v"
 `include "lsq.sv"
+`include "single_port_mem.v"
 
 //TOP LEVEL MODULE
 module CPU(
@@ -17,7 +18,7 @@ module CPU(
   output wire [5:0] cpu_r_rrd_out,
   output wire [5:0] cpu_r_rrs1_out,
   output wire [5:0] cpu_r_rrs2_out,
-  output wire [`LSQ_ENTRY-1:0] cpu_curr_lsq
+  output wire [76:0] cpu_curr_lsq
   
 );
   //Parameters
@@ -89,7 +90,13 @@ module CPU(
   wire [31:0] lsq_address_out;  
   wire [31:0] lsq_data_out; 
 
-  wire [`LSQ_ENTRY:0] lsq_curr_entry;
+  wire [76:0] lsq_curr_entry;
+  
+  //MEM WIRES
+  wire mem_re;
+  wire mem_wr;
+  wire [19:0] mem_address;
+  wire [7:0] mem_data;
   
   //Assign to CPU outputs
   assign cpu_f_instr_out = fb_instr_out;
@@ -196,8 +203,17 @@ module CPU(
     .address_out(lsq_address_out),       
     .data_out(lsq_data_out)    
   );
-
- 
+  
+  //Main Memory
+  single_port_mem my_single_port_mem(
+    .clk(clk),
+    .rst(rst),
+    .cs(1'b1),
+    .mem_re(mem_re),
+    .mem_wr(mem_wr),
+    .address(mem_address),
+    .data(mem_data)
+  );
 endmodule
 
 
