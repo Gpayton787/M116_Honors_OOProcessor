@@ -18,6 +18,8 @@ module CPU(
   output wire [5:0] cpu_r_rrd_out,
   output wire [5:0] cpu_r_rrs1_out,
   output wire [5:0] cpu_r_rrs2_out,
+  output wire [140:0] cpu_rs_out [63:0], //temporary
+  output wire [45:0] cpu_rob_out [15:0] // temporary 
   output wire [76:0] cpu_curr_lsq
   
 );
@@ -72,6 +74,10 @@ module CPU(
   wire [PREG_WIDTH-1:0] rename_rrs1_out;
   wire [PREG_WIDTH-1:0] rename_rrs2_out;
   wire [PREG_WIDTH-1:0] rename_old_rd_out;
+  wire [DATA_WIDTH-1:0] data_rrs1_out;
+  wire [DATA_WIDTH-1:0] data_rrs2_out;
+  wire ready_rrs1_out;
+  wire ready_rrs2_out;
 
   //DISPATCH LOGIC WIRES
   wire di_mem_re;
@@ -79,10 +85,17 @@ module CPU(
 
   assign di_mem_re = db_c_sig_out[`MEMRE];
   assign di_mem_wr = db_c_sig_out[`MEMWR];
+
+  //RS OUTPUTS
+  wire [RS_WIDTH-1:0] rs_dispatch_out;
   
   //ROB OUTPUTS
   wire rob_push;
   wire [PREG_WIDTH-1:0] rob_free_reg;
+
+  //RS to FU WIRES
+  wire [2:0] rs_fu_in;
+  wire [2:0] rs_fu_out;
 
   //LSQ WIRES
   wire [31:0] lsq_address_in;  
@@ -188,6 +201,36 @@ module CPU(
     .data_out(rename_rrd_out),
     .empty(empty),
     .full(full)
+  );
+  
+  rs my_rs(
+    .instr(db_instr_out),
+    .imm(db_imm_out),
+    .rd(rename_rrd_out),
+    .rd_old(rename_old_rd_out),
+    .src1(rename_rrs1_out),
+    .data1(data_rrs1_out),
+    .ready1(ready_rrs1_out),
+    .src2(rename_rrs2_out),
+    .data2(data_rrs2_out),
+    .ready2(ready_rrs2_out),
+    .clk(clk),
+    .fu_in(rs_fu_in),
+    .fu_out(rs_fu_out),
+    .rs_lines(cpu_rs_out),
+    .rob_out(rs_dispatch_out)
+  );
+  
+  fu my_fu(
+    .ready_in(rs_fu_out),
+    .ready_out(rs_fu_in)
+  );
+  
+  rob my_rob(
+    .rs_line(rs_dispatch_out),
+    .pc(db_pc_out),
+    .clk(clk),
+    .rob_out(cpu_rob_out)
   );
   
   lsq my_lsq(
