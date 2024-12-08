@@ -203,6 +203,7 @@ module Areg_file#(
       //Ensure we can't write to x0
       if(rd_tag_idx != 0) begin
         tag_mem[rd_tag_idx] <= rd_tag;
+        ready_mem[rd_tag_idx] <= 0;
       end
     end
 end
@@ -227,6 +228,7 @@ module rs
   input wire [31:0] instr,
   input wire [31:0] imm,
   input wire [5:0] rd,
+  input wire [5:0] rd_old,
   input wire [5:0] src1,
   input wire [31:0] data1,
   input wire ready1,
@@ -241,16 +243,20 @@ module rs
   output reg [`RS_WIDTH-1:0] rs_out1,
   output reg [`RS_WIDTH-1:0] rs_out2,
   output reg [`RS_WIDTH-1:0] rs_out3,
-  output reg [2:0] rdy_out
+  output reg [2:0] rdy_out,
+  
+  output reg [`RS_WIDTH-1:0] rs_lines [`RS_SIZE-1:0], //temp output
+  output reg [`RS_WIDTH-1:0] rob_out // dispatch to rob
 );
 
-  reg [`RS_WIDTH-1:0] lines [5:0];
+  reg [`RS_WIDTH-1:0] lines [`RS_SIZE-1:0];
   reg [5:0] rob_pointer; //circular rob
   reg [5:0] rs_pointer; //circular reservation station
   reg next_alu; //switches between first two alu
 
   reg usec;
   reg [6:0] opcode;
+  reg [2:0] funct3;
   reg [1:0] fu_pos;
   reg [2:0] fu_update;
 
@@ -287,10 +293,11 @@ begin
     fu_out = fu_update;
 end
 
-always @(instr) //dispatch
+always @(posedge clk) //dispatch
 begin
     usec = 1;
     opcode = instr[6:0];
+  	funct3 = instr[14:12];
 
     case (opcode)
         7'b0000011 : fu_pos = 2'b10; //lb, lw
@@ -300,12 +307,20 @@ begin
             next_alu = !next_alu;
         end
     endcase
-
+  
 	rob = rob_pointer;
-    lines[rs_pointer] = {usec, opcode, rd, src1, data1, ready1, src2, data2, ready2, imm, fu_pos, rob_pointer};
-	
-  	rob_pointer = rob_pointer + 1;
-    rs_pointer = rs_pointer + 1;
+  
+  	if (opcode != 0) begin
+      lines[rs_pointer] = {usec, funct3, opcode, rd, rd_old, src1, data1, ready1, src2, data2, ready2, imm, fu_pos, rob_pointer};
+      rob_out = lines[rs_pointer];
+      for (integer i = 0; i < 64; i = i+1) begin
+      	rs_lines[i] = lines[i];
+      end	
+  
+  	  rob_pointer = rob_pointer + 1;
+      rs_pointer = rs_pointer + 1;
+  	end
+    
 end
   
 always @(fu_in)
@@ -338,5 +353,4 @@ begin
 end
 
 endmodule
-
 
