@@ -218,10 +218,10 @@ module CPU#(
     .fu_table_in(fu_table_out),
     .fu_table_update_out(fu_table_update_in),
     .rob_num(rob_num),
-    .rs_out0(rs_out0),
-    .rs_out1(rs_out1),
-    .rs_out2(rs_out2),
-    .rdy_out(rs_valid_out)
+    .instr_out0(rs_out0),
+    .instr_out1(rs_out1),
+    .instr_out2(rs_out2),
+    .instr_valid(rs_valid_out)
   );
   
   /*
