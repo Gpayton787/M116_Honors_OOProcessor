@@ -55,6 +55,4 @@ module lsu#()
         end    
     end
 
-
-
 endmodule

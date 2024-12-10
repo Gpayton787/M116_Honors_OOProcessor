@@ -20,11 +20,13 @@
 `define RS_OP 130:124
 `define RS_USE 131:131
 
+//LSQ
 `define LSQ_DATA 31:0
 `define LSQ_ADDR 63:32
 `define LSQ_PC 75:64
 `define LSQ_IS_LOAD 76
-`define LSQ_ENTRY 77
+`define LSQ_READY 77
+`define LSQ_ENTRY 78
 
 `define OPCODE 6:0
 

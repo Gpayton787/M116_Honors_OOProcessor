@@ -1,13 +1,19 @@
 `include "fetch.v"
 `include "fetch_buffer.v"
 `include "decode.v"
-`include "rename.v"
+`include "free_pool.v"
+`include "areg_file.v"
 `include "decode_buffer.v"
 `include "lsq.sv"
 `include "single_port_mem.v"
+`include "fu_table.v"
+`include "rs.v"
+`include "rs_constants.v"
 
 //TOP LEVEL MODULE
-module CPU(
+module CPU#(
+	parameter REG_DATA_WIDTH = 32
+)(
   input wire clk,
   input wire rst,
   output wire [31:0] cpu_f_instr_out,
@@ -72,6 +78,12 @@ module CPU(
   wire [PREG_WIDTH-1:0] rename_rrs1_out;
   wire [PREG_WIDTH-1:0] rename_rrs2_out;
   wire [PREG_WIDTH-1:0] rename_old_rd_out;
+  
+  //AREG OUTPUTS
+  wire [REG_DATA_WIDTH-1:0] areg_data1_out;
+  wire [REG_DATA_WIDTH-1:0] areg_data2_out;
+  wire areg_ready1_out;
+  wire areg_ready2_out;
 
   //DISPATCH LOGIC WIRES
   wire di_mem_re;
@@ -80,9 +92,17 @@ module CPU(
   assign di_mem_re = db_c_sig_out[`MEMRE];
   assign di_mem_wr = db_c_sig_out[`MEMWR];
   
+  //RS OUTPUTS
+  wire [`RS_WIDTH-1:0] rs_out0;
+  wire [`RS_WIDTH-1:0] rs_out1;
+  wire [`RS_WIDTH-1:0] rs_out2;
+  wire [2:0] rs_valid_out;
+  
+  
   //ROB OUTPUTS
   wire rob_push;
   wire [PREG_WIDTH-1:0] rob_free_reg;
+  wire [5:0] rob_num;
 
   //LSQ WIRES
   wire [31:0] lsq_address_in;  
@@ -97,6 +117,10 @@ module CPU(
   wire mem_wr;
   wire [19:0] mem_address;
   wire [7:0] mem_data;
+  
+  //FU WIRES
+  wire [2:0] fu_table_update_in;
+  reg [2:0] fu_table_out;
   
   //Assign to CPU outputs
   assign cpu_f_instr_out = fb_instr_out;
@@ -148,24 +172,9 @@ module CPU(
     .alu_sig_out(db_alu_sig_out),
     .imm_out(db_imm_out)
   );
- 
- /*
-  rename my_rename(
-    .clk(clk),
-    .rst(rst),
-    .c_sig(db_c_sig_out),
-    .push_free_reg(rob_push),
-    .freed_reg(rob_free_reg),
-    .instr_in(db_instr_out),
-    .rrd_out(rename_rrd_out),
-    .rrs1_out(rename_rrs1_out),
-    .rrs2_out(rename_rrs2_out),
-    .rd_old_tag_out(rename_old_rd_out)
-  );
-  */
   
   //ARF
-  Areg_file my_areg_file(
+  areg_file my_areg_file(
     .clk(clk),
     .rst(rst),
     .rd_tag_idx(rd),
@@ -175,7 +184,11 @@ module CPU(
     .rd_tag(rename_rrd_out),
     .rs1_tag(rename_rrs1_out),
     .rs2_tag(rename_rrs2_out),
-    .rd_old_tag(rename_old_rd_out)
+    .rd_old_tag(rename_old_rd_out),
+    .rs1_data(areg_data1_out),
+    .rs2_data(areg_data2_out),
+    .rs1_ready(areg_ready1_out),
+    .rs2_ready(areg_ready2_out)
   );
   
   //Free Pool
@@ -190,6 +203,37 @@ module CPU(
     .full(full)
   );
   
+  rs my_rs(
+    .clk(clk),
+    .instr(db_instr_out),
+    .imm(db_imm_out),
+    .rd(rename_rrd_out),
+    .src1(rename_rrs1_out),
+    .data1(areg_data1_out),
+    .ready1(areg_ready1_out),
+    .src2(rename_rrs2_out),
+    .data2(areg_data2_out),
+    .ready2(areg_ready2_out),
+    .c_sigs(db_c_sig_out),
+    .fu_table_in(fu_table_out),
+    .fu_table_update_out(fu_table_update_in),
+    .rob_num(rob_num),
+    .rs_out0(rs_out0),
+    .rs_out1(rs_out1),
+    .rs_out2(rs_out2),
+    .rdy_out(rs_valid_out)
+  );
+  
+  /*
+  fu_table my_fu_table(
+    .clk(clk),
+    .rst(rst),
+    .update_in(fu_table_update_in),
+    .table_out(fu_table_out)
+  );
+  */
+  
+  /*
   lsq my_lsq(
     .clk(clk),
  	.rst(rst),
@@ -214,6 +258,7 @@ module CPU(
     .address(mem_address),
     .data(mem_data)
   );
+  */
 endmodule
 
 

@@ -3,7 +3,7 @@
 module lsq #(
     parameter int NUM_ENTRIES = 16,
     parameter int PC_WIDTH = 12,
-    parameter int ADDR_WIDTH = 32,
+    parameter int ADDR_WIDTH = 20,
     parameter int DATA_WIDTH = 32
 )(
   input wire clk,
@@ -19,7 +19,7 @@ module lsq #(
   output reg [31:0] data_out      // Data for store
 );
     // Internal LSQ entries
-  reg [1+PC_WIDTH+ADDR_WIDTH+DATA_WIDTH] lsq[NUM_ENTRIES];
+  reg [1+1+PC_WIDTH+ADDR_WIDTH+DATA_WIDTH] lsq[NUM_ENTRIES];
   reg [$clog2(NUM_ENTRIES):0] head_ptr;
   reg is_load;
 
@@ -27,7 +27,7 @@ module lsq #(
     head_ptr = 0;
   end
   
-  //Sequential logic
+  //Sequential reservation logic
   always @(posedge clk) begin
     if(rst) begin
       head_ptr <= 0;
@@ -38,6 +38,12 @@ module lsq #(
         lsq[head_ptr] <= {is_load, pc, address_in, data_in};
       	head_ptr <= head_ptr + 1;  
       end
+    end
+  end
+  //Sequential issue logic
+  always @(posedge clk) begin
+    for(integer i = 0; i < NUM_ENTRIES; i= i+1) begin
+      lsq[i]
     end
   end
   
