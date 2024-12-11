@@ -9,6 +9,7 @@
 `include "fu_table.v"
 `include "rs.v"
 `include "rs_constants.v"
+`include "execute.v"
 
 //TOP LEVEL MODULE
 module CPU#(
@@ -24,8 +25,13 @@ module CPU#(
   output wire [5:0] cpu_r_rrd_out,
   output wire [5:0] cpu_r_rrs1_out,
   output wire [5:0] cpu_r_rrs2_out,
-  output wire [76:0] cpu_curr_lsq
-  
+  output wire [31:0] cpu_db_instr_out,
+  output wire [`RS_WIDTH-1:0] cpu_issue1,
+  output wire [`RS_WIDTH-1:0] cpu_issue2,
+  output wire [`RS_WIDTH-1:0] cpu_issue3,
+  output wire [2:0] cpu_instr_valid,
+  output wire [2:0] cpu_fu_table_out,
+  output wire [2:0] cpu_fu_table_in
 );
   //Parameters
   parameter PREG_WIDTH = 6;
@@ -122,6 +128,10 @@ module CPU#(
   wire [2:0] fu_table_update_in;
   reg [2:0] fu_table_out;
   
+  //ALU OUTPUT WIRES
+  wire [38:0] alu0_result;
+  wire [38:0] alu1_result;
+  
   //Assign to CPU outputs
   assign cpu_f_instr_out = fb_instr_out;
   assign cpu_d_instr_out = db_instr_out;
@@ -131,7 +141,13 @@ module CPU#(
   assign cpu_r_rrd_out = rename_rrd_out;
   assign cpu_r_rrs1_out = rename_rrs1_out;
   assign cpu_r_rrs2_out = rename_rrs2_out;
-  assign cpu_curr_lsq = lsq_curr_entry;
+  assign cpu_db_instr_out = db_instr_out;
+  assign cpu_issue1 = rs_out0;
+  assign cpu_issue2 = rs_out1;
+  assign cpu_issue3 = rs_out2;
+  assign cpu_instr_valid = rs_valid_out;
+  assign cpu_fu_table_out = fu_table_out;
+  assign cpu_fu_table_in = fu_table_update_in;
   
   
   //Module instantiations
@@ -216,22 +232,36 @@ module CPU#(
     .ready2(areg_ready2_out),
     .c_sigs(db_c_sig_out),
     .fu_table_in(fu_table_out),
-    .fu_table_update_out(fu_table_update_in),
+    .fu_table_out(fu_table_update_in),
     .rob_num(rob_num),
     .instr_out0(rs_out0),
     .instr_out1(rs_out1),
     .instr_out2(rs_out2),
-    .instr_valid(rs_valid_out)
+    .instr_valid(rs_valid_out),
+    .alu0_in(alu0_result),
+    .alu1_in(alu1_result)
   );
   
-  /*
   fu_table my_fu_table(
     .clk(clk),
     .rst(rst),
     .update_in(fu_table_update_in),
     .table_out(fu_table_out)
   );
-  */
+  
+  alu0 my_alu0(
+    .instr_in0(rs_out0),
+    .instr_ready(rs_valid_out),
+    .clk(clk),
+    .result0(alu0_result)
+  );
+  
+  alu1 my_alu1(
+    .instr_in1(rs_out1),
+    .instr_ready(rs_valid_out),
+    .clk(clk),
+    .result1(alu1_result)
+  );
   
   /*
   lsq my_lsq(
