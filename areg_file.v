@@ -1,5 +1,5 @@
-module areg_file#(
-  parameter PREG_WIDTH = 6,
+ module areg_file#(
+  PREG_WIDTH = 6,
   DATA_WIDTH = 32,
   AREG_WIDTH = 5,
   NUM_AREG = 32,
@@ -19,9 +19,9 @@ module areg_file#(
   output reg [DATA_WIDTH-1:0] rs2_data,
   output reg [PREG_WIDTH-1:0] rs1_tag,
   output reg [PREG_WIDTH-1:0] rs2_tag,
-  output reg [PREG_WIDTH-1:0] rd_old_tag,
   output reg rs1_ready,
-  output reg rs2_ready
+  output reg rs2_ready,
+  output reg [PREG_WIDTH-1:0] rd_old_tag
 
 );
   //Declare register file memory
@@ -64,6 +64,7 @@ module areg_file#(
       //Ensure we can't write to x0
       if(rd_tag_idx != 0) begin
         tag_mem[rd_tag_idx] <= rd_tag;
+        ready_mem[rd_tag] <= 0;
       end
     end
 end
@@ -76,8 +77,8 @@ always @(*) begin
   rs2_tag = tag_mem[rs2_tag_idx];
   rs1_data = data_mem[rs1_tag_idx];
   rs2_data = data_mem[rs2_tag_idx];
-  rs1_ready = ready_mem[rs1_tag_idx];
-  rs2_ready = ready_mem[rs2_tag_idx];
+  rs1_ready = ready_mem[rs1_tag];
+  rs2_ready = ready_mem[rs2_tag];
 end
 
 endmodule
