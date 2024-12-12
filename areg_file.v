@@ -1,4 +1,6 @@
- module areg_file#(
+`include "alu_constants.v" 
+
+module areg_file#(
   PREG_WIDTH = 6,
   DATA_WIDTH = 32,
   AREG_WIDTH = 5,
@@ -14,6 +16,10 @@
   //PLEASE NOTE THAT THIS REG_WRITE CORRESPONDS TO RENAMING RD NOT WRITING DATA
   input wire reg_write,
   input wire [PREG_WIDTH-1:0] rd_tag,
+  
+  //ALU
+  input wire [`ALU_WIDTH-1:0] alu0_in,
+  input wire [`ALU_WIDTH-1:0] alu1_in,
  
   output reg [DATA_WIDTH-1:0] rs1_data,
   output reg [DATA_WIDTH-1:0] rs2_data,
@@ -68,7 +74,28 @@
       end
     end
 end
-  
+
+  //Writeback from ALU
+  always @(negedge clk) begin
+    //$display("Writeback %d, %d", alu1_in[`ALU_REG], alu1_in[`ALU_RESULT]);
+    if (alu0_in[`ALU_READY] == 1) begin
+      for (integer i = 0; i < NUM_AREG; i = i+1) begin
+        if (alu0_in[`ALU_REG] == tag_mem[i]) begin
+          
+          data_mem[i] <= alu0_in[`ALU_RESULT];
+          ready_mem[tag_mem[i]] <= 1;
+        end
+      end
+    end
+    if (alu1_in[`ALU_READY] == 1) begin
+      for (integer i = 0; i < NUM_AREG; i = i+1) begin
+        if (alu1_in[`ALU_REG] == tag_mem[i]) begin
+          data_mem[i] <= alu1_in[`ALU_RESULT];
+          ready_mem[tag_mem[i]] <= 1;
+        end
+      end
+    end
+  end
  
 //Combinational block for reads
 always @(*) begin
