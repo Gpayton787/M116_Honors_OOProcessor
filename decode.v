@@ -49,6 +49,7 @@ module control
     case(opcode)
       `RTYPE_INSTR: c_sig_out = `RTYPE_SIG;
       `ITYPE_INSTR: c_sig_out = `ITYPE_SIG;
+      `LUI_INSTR: c_sig_out = `ITYPE_SIG;
       `LOAD_INSTR: begin
         case(funct3)
           `F3_BYTE : c_sig_out = `LB_SIG;
