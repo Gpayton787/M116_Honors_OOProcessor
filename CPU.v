@@ -9,7 +9,7 @@
 `include "fu_table.v"
 `include "rs.v"
 `include "rs_constants.v"
-`include "execute.v"
+`include "alu.v"
 
 //TOP LEVEL MODULE
 module CPU#(
@@ -31,7 +31,14 @@ module CPU#(
   output wire [`RS_WIDTH-1:0] cpu_issue3,
   output wire [2:0] cpu_instr_valid,
   output wire [2:0] cpu_fu_table_out,
-  output wire [2:0] cpu_fu_table_in
+  output wire [2:0] cpu_rs_update,
+  output wire cpu_alu0_valid,
+  output wire cpu_alu1_valid,
+  output wire cpu_alu2_valid,
+  output wire [31:0] cpu_alu0_res,
+  output wire [31:0] cpu_alu1_res,
+  output wire [31:0] cpu_alu2_res
+  
 );
   //Parameters
   parameter PREG_WIDTH = 6;
@@ -104,6 +111,16 @@ module CPU#(
   wire [`RS_WIDTH-1:0] rs_out2;
   wire [2:0] rs_valid_out;
   
+  //ALU OUTPUTS
+  wire [31:0] alu0_res;
+  wire [31:0] alu1_res;
+  wire [31:0] alu2_res;
+  wire [`RS_WIDTH-1:0] alu0_instr_info_out;
+  wire [`RS_WIDTH-1:0] alu1_instr_info_out;
+  wire [`RS_WIDTH-1:0] alu2_instr_info_out;
+  wire alu0_valid;
+  wire alu1_valid;
+  wire alu2_valid;
   
   //ROB OUTPUTS
   wire rob_push;
@@ -125,12 +142,10 @@ module CPU#(
   wire [7:0] mem_data;
   
   //FU WIRES
-  wire [2:0] fu_table_update_in;
+  wire [2:0] rs_update;
+  wire [2:0] fu_update;
   reg [2:0] fu_table_out;
-  
-  //ALU OUTPUT WIRES
-  wire [38:0] alu0_result;
-  wire [38:0] alu1_result;
+  assign fu_update = {alu2_valid, alu1_valid, alu0_valid};
   
   //Assign to CPU outputs
   assign cpu_f_instr_out = fb_instr_out;
@@ -147,18 +162,26 @@ module CPU#(
   assign cpu_issue3 = rs_out2;
   assign cpu_instr_valid = rs_valid_out;
   assign cpu_fu_table_out = fu_table_out;
-  assign cpu_fu_table_in = fu_table_update_in;
+  assign cpu_rs_update = rs_update;
+  assign cpu_alu0_valid = alu0_valid;
+  assign cpu_alu1_valid = alu1_valid;
+  assign cpu_alu2_valid = alu2_valid;
+  assign cpu_alu0_res = alu0_res;
+  assign cpu_alu1_res = alu1_res;
+  assign cpu_alu2_res = alu2_res;
   
   
   //Module instantiations
   fetch my_fetch(
     .clk(clk),
+    .rst(rst),
     .instr_out(f_instr_out),
     .pc_out(f_pc_out)
   );
   
   fetch_buffer my_fetch_buffer(
     .clk(clk),
+    .rst(rst),
     .pc_in(f_pc_out),
     .instr_in(f_instr_out),
     .pc_out(fb_pc_out),
@@ -177,6 +200,7 @@ module CPU#(
   
   decode_buffer my_decode_buffer(
     .clk(clk),
+    .rst(rst),
     .pc_in(d_pc_out),
     .instr_in(d_instr_out),
     .c_sig_in(d_c_sig_out),
@@ -222,6 +246,7 @@ module CPU#(
   rs my_rs(
     .clk(clk),
     .instr(db_instr_out),
+    .alu_op(db_alu_sig_out),
     .imm(db_imm_out),
     .rd(rename_rrd_out),
     .src1(rename_rrs1_out),
@@ -232,36 +257,51 @@ module CPU#(
     .ready2(areg_ready2_out),
     .c_sigs(db_c_sig_out),
     .fu_table_in(fu_table_out),
-    .fu_table_out(fu_table_update_in),
+    .fu_table_out(rs_update),
     .rob_num(rob_num),
     .instr_out0(rs_out0),
     .instr_out1(rs_out1),
     .instr_out2(rs_out2),
-    .instr_valid(rs_valid_out),
-    .alu0_in(alu0_result),
-    .alu1_in(alu1_result)
+    .instr_valid(rs_valid_out)
   );
   
   fu_table my_fu_table(
     .clk(clk),
     .rst(rst),
-    .update_in(fu_table_update_in),
+    .rs_update(rs_update),
+    .fu_update(fu_update),
     .table_out(fu_table_out)
   );
   
-  alu my_alu0(
-    .instr_in0(rs_out0),
-    .instr_ready(rs_valid_out),
+  alu_wrapper my_alu0(
     .clk(clk),
-    .result0(alu0_result)
+    .rst(rst),
+    .instr_info_in(rs_out0),
+    .en(rs_valid_out[0]),
+    .result(alu0_res),
+    .valid(alu0_valid),
+    .instr_info_out(alu0_instr_info_out)
+  );
+  alu_wrapper my_alu1(
+    .clk(clk),
+    .rst(rst),
+    .instr_info_in(rs_out1),
+    .en(rs_valid_out[1]),
+    .result(alu1_res),
+    .valid(alu1_valid),
+    .instr_info_out(alu1_instr_info_out)
+  );
+  alu_wrapper my_alu2(
+    .clk(clk),
+    .rst(rst),
+    .instr_info_in(rs_out2),
+    .en(rs_valid_out[2]),
+    .result(alu2_res),
+    .valid(alu2_valid),
+    .instr_info_out(alu2_instr_info_out)
   );
   
-  alu my_alu1(
-    .instr_in1(rs_out1),
-    .instr_ready(rs_valid_out),
-    .clk(clk),
-    .result1(alu1_result)
-  );
+  //Writeback
   
   /*
   lsq my_lsq(

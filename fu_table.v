@@ -2,9 +2,8 @@ module fu_table
 (
   input wire clk,
   input wire rst,
-  input wire alu0,
-  input wire alu1,
-  input wire [2:0] update_in,
+  input wire [2:0] rs_update,
+  input wire [2:0] fu_update,
   output reg [2:0] table_out
 );
   
@@ -18,9 +17,7 @@ module fu_table
        table_out <= 3'b111;
     end 
     else begin
-    	table_out <= update_in;
-      	table_out[0] <= table_out[0] | alu0;
-      	table_out[1] <= table_out[1] | alu1;
+    	table_out <= rs_update | fu_update;
 	end
   end
 endmodule
