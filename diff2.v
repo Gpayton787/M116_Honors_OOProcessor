@@ -1,97 +1,84 @@
-module rs#(
-  PREG_WIDTH = 6,
-  DEPTH = 64,
-  
-)
+module areg_file#(
+  parameter PREG_WIDTH = 6,
+  DATA_WIDTH = 32,
+  AREG_WIDTH = 5,
+  NUM_AREG = 32,
+  NUM_PREG = 64
+) 
 (
-  //Row inputs
-  input wire [31:0] instr,
-  input wire [31:0] imm,
-  input wire [PREG_WIDTH-1:0] rd,
-  input wire [PREG_WIDTH-1:0] src1,
-  input wire [31:0] data1,
-  input wire ready1,
-  input wire [PREG_WIDTH-1:0] src2,
-  input wire [31:0] data2,
-  input wire ready2,
-  input wire c_sigs,
-  
-  
-  //Logic inputs
-  input wire [2:0] fu_in,
   input wire clk,
+  input wire rst,
+  input wire [AREG_WIDTH-1:0] rs1_tag_idx,
+  input wire [AREG_WIDTH-1:0] rs2_tag_idx,
+  input wire [AREG_WIDTH-1:0] rd_tag_idx,
+  //PLEASE NOTE THAT THIS REG_WRITE CORRESPONDS TO RENAMING RD NOT WRITING DATA
+  input wire reg_write,
+  input wire [PREG_WIDTH-1:0] rd_tag,
+ 
+  output reg [DATA_WIDTH-1:0] rs1_data,
+  output reg [DATA_WIDTH-1:0] rs2_data,
+  output reg [PREG_WIDTH-1:0] rs1_tag,
+  output reg [PREG_WIDTH-1:0] rs2_tag,
+  output reg [PREG_WIDTH-1:0] rd_old_tag,
+  output reg rs1_ready,
+  output reg rs2_ready
 
-  //Outputs
-  output reg rob_num,
-  output reg [2:0] fu_out,
-  output reg [2:0] rdy_out
 );
+  //Declare register file memory
+  
+  //READY BITS
+  reg ready_mem[0:NUM_PREG-1];
+  
+  //TAGS
+  reg [PREG_WIDTH-1:0] tag_mem[0:NUM_AREG-1];
+  
+  //DATA
+  reg [DATA_WIDTH-1:0] data_mem[0:NUM_PREG-1];
 
-  reg [`RS_WIDTH-1:0] queue[0:DEPTH-1];
-  reg [5:0] rob_pointer; //circular rob
-  reg [5:0] rs_pointer; //circular reservation station
-  reg next_alu; //switches between first two alu
-
-  reg [6:0] opcode;
-  reg [1:0] fu_pos;
-  reg [2:0] fu_update;
-
-initial begin
-  	rdy_out = 3'b000; // no instructions ready to issue
-    rob_pointer = 0;
-    rs_pointer = 0;
-    next_alu = 2'b00;
-    fu_update = 3'b111; // all fu start out ready
-end
-
-always @(posedge clk) //issue
-begin
-  rdy_out = 3'b000;
-  for (integer i = 0; i < 8; i = i+1) begin
-    if (lines[i][`RS_WIDTH-1] == 1 && lines[i][`RS_RDY1] == 1 && lines[i][`RS_RDY2] == 1 && fu_in[lines[i][`RS_FU]] == 1) // check fu ready and src reg ready
-     	begin
-          fu_update[lines[i][`RS_FU]] = 0;
-          if (rdy_out[0] == 0) begin
-            rs_out1 = lines[i];
-            rdy_out[0] = 1;
-          end
-          else if (rdy_out[1] == 0) begin
-            rs_out2 = lines[i];
-            rdy_out[1] = 1;
-          end
-          else if (rdy_out[2] == 0) begin
-            rs_out3 = lines[i];
-            rdy_out[2] = 1;
-          end
-          lines[i][`RS_USE] = 0;
-        end
+  //Initialize memory
+  initial begin 
+    //INIT READY to all 1's
+    for (integer i = 0; i < NUM_PREG; i = i+1) begin
+      ready_mem[i] = 1;
     end
-    fu_out = fu_update;
-end
-
-always @(instr) //dispatch
-begin
-    opcode = instr[6:0];
-
-    case (opcode)
-        7'b0000011 : fu_pos = 2'b10; //lb, lw
-        7'b0100011 : fu_pos = 2'b10; //sb, sw
-        default : begin
-            fu_pos = next_alu;
-            next_alu = !next_alu;
-        end
-    endcase
-
-	rob_num = rob_pointer;
-  queue[rs_pointer] = {1, opcode, rd, src1, data1, ready1, src2, data2, ready2, imm, fu_pos, rob_pointer, c_sigs};
-	
-  	rob_pointer = rob_pointer + 1;
-    rs_pointer = rs_pointer + 1;
+    //INIT TAGS to one-to-one mapping
+    for (integer i = 0; i < NUM_AREG; i = i+1) begin
+      tag_mem[i] = i;
+    end
+    
+    //INIT DATA TO 0's
+    for (integer i = 0; i < NUM_PREG; i = i+1) begin
+      data_mem[i] = 0;
+    end
+  end
+  
+//Sequential block for writes
+  always @(posedge clk or rst) begin
+    if(rst) begin
+      for (integer i = 0; i < NUM_AREG; i = i+1) begin
+        tag_mem[i] <= i;
+      end
+    end
+    
+    if(reg_write) begin 
+      //Ensure we can't write to x0
+      if(rd_tag_idx != 0) begin
+        tag_mem[rd_tag_idx] <= rd_tag;
+        ready_mem[rd_tag] <= 0;
+      end
+    end
 end
   
-always @(fu_in)
-begin
-    fu_update = fu_in;
+ 
+//Combinational block for reads
+always @(*) begin
+  rd_old_tag = tag_mem[rd_tag_idx];
+  rs1_tag = tag_mem[rs1_tag_idx];
+  rs2_tag = tag_mem[rs2_tag_idx];
+  rs1_data = data_mem[rs1_tag_idx];
+  rs2_data = data_mem[rs2_tag_idx];
+  rs1_ready = ready_mem[rs1_tag_idx];
+  rs2_ready = ready_mem[rs2_tag_idx];
 end
-  
+
 endmodule

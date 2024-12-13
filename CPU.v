@@ -249,14 +249,14 @@ module CPU#(
     .table_out(fu_table_out)
   );
   
-  alu0 my_alu0(
+  alu my_alu0(
     .instr_in0(rs_out0),
     .instr_ready(rs_valid_out),
     .clk(clk),
     .result0(alu0_result)
   );
   
-  alu1 my_alu1(
+  alu my_alu1(
     .instr_in1(rs_out1),
     .instr_ready(rs_valid_out),
     .clk(clk),
