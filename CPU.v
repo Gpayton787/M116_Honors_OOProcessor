@@ -10,6 +10,9 @@
 `include "rs.v"
 `include "rs_constants.v"
 `include "alu.v"
+`include "result_buffer.v"
+`include "rob.v"
+`include "rob_constants.v"
 
 //TOP LEVEL MODULE
 module CPU#(
@@ -26,6 +29,7 @@ module CPU#(
   output wire [5:0] cpu_r_rrs1_out,
   output wire [5:0] cpu_r_rrs2_out,
   output wire [31:0] cpu_db_instr_out,
+  output wire cpu_db_valid,
   output wire [`RS_WIDTH-1:0] cpu_issue1,
   output wire [`RS_WIDTH-1:0] cpu_issue2,
   output wire [`RS_WIDTH-1:0] cpu_issue3,
@@ -37,8 +41,15 @@ module CPU#(
   output wire cpu_alu2_valid,
   output wire [31:0] cpu_alu0_res,
   output wire [31:0] cpu_alu1_res,
-  output wire [31:0] cpu_alu2_res
-  
+  output wire [31:0] cpu_alu2_res,
+  output wire [5:0] cpu_alu0_rd,
+  output wire [5:0] cpu_alu1_rd,
+  output wire [5:0] cpu_alu2_rd,
+  output wire [`BUS_WIDTH-1:0] cpu_bus0,
+  output wire [`BUS_WIDTH-1:0] cpu_bus1,
+  output wire [`BUS_WIDTH-1:0] cpu_bus2,
+  output wire [`RETIRE_WIDTH-1:0] cpu_retire0,
+  output wire [`RETIRE_WIDTH-1:0] cpu_retire1
 );
   //Parameters
   parameter PREG_WIDTH = 6;
@@ -67,6 +78,8 @@ module CPU#(
   wire [6:0] db_c_sig_out;
   wire [2:0] db_alu_sig_out;
   wire [31:0] db_imm_out;
+  wire db_valid;
+  assign cpu_db_valid = db_valid;
 
   //LOGIC WIRES AFTER DECODE BUFFER
   wire [6:0] db_opcode;
@@ -91,6 +104,8 @@ module CPU#(
   wire [PREG_WIDTH-1:0] rename_rrs1_out;
   wire [PREG_WIDTH-1:0] rename_rrs2_out;
   wire [PREG_WIDTH-1:0] rename_old_rd_out;
+  
+
   
   //AREG OUTPUTS
   wire [REG_DATA_WIDTH-1:0] areg_data1_out;
@@ -122,9 +137,31 @@ module CPU#(
   wire alu1_valid;
   wire alu2_valid;
   
+  //Result Buffer Outputs
+  wire [31:0] rb_res0;
+  wire rb_valid0;
+  wire [5:0] rb_rd0;
+  wire [31:0] rb_res1;
+  wire rb_valid1;
+  wire [5:0] rb_rd1;
+  wire [31:0] rb_res2;
+  wire rb_valid2;
+  wire [5:0] rb_rd2;
+  
+  //BUS wires
+  wire [`BUS_WIDTH-1:0] bus0 = {rb_valid0, rb_res0, rb_rd0};
+  wire [`BUS_WIDTH-1:0] bus1 = {rb_valid1, rb_res1, rb_rd1};
+  wire [`BUS_WIDTH-1:0] bus2 = {rb_valid2, rb_res2, rb_rd2};
+  assign cpu_bus0 = bus0;
+  assign cpu_bus1 = bus1;
+  assign cpu_bus2 = bus2;
+
+  
   //ROB OUTPUTS
   wire rob_push;
   wire [PREG_WIDTH-1:0] rob_free_reg;
+  wire [`RETIRE_WIDTH-1:0] rob_retire0;
+  wire [`RETIRE_WIDTH-1:0] rob_retire1;
   wire [5:0] rob_num;
 
   //LSQ WIRES
@@ -163,12 +200,17 @@ module CPU#(
   assign cpu_instr_valid = rs_valid_out;
   assign cpu_fu_table_out = fu_table_out;
   assign cpu_rs_update = rs_update;
-  assign cpu_alu0_valid = alu0_valid;
-  assign cpu_alu1_valid = alu1_valid;
-  assign cpu_alu2_valid = alu2_valid;
-  assign cpu_alu0_res = alu0_res;
-  assign cpu_alu1_res = alu1_res;
-  assign cpu_alu2_res = alu2_res;
+  assign cpu_alu0_valid = rb_valid0;
+  assign cpu_alu1_valid = rb_valid1;
+  assign cpu_alu2_valid = rb_valid2;
+  assign cpu_alu0_res = rb_res0;
+  assign cpu_alu1_res = rb_res1;
+  assign cpu_alu2_res = rb_res2;
+  assign cpu_alu0_rd = rb_rd0;
+  assign cpu_alu1_rd = rb_rd1;
+  assign cpu_alu2_rd = rb_rd2;
+  assign cpu_retire0 = rob_retire0;
+  assign cpu_retire1 = rob_retire1;
   
   
   //Module instantiations
@@ -210,7 +252,8 @@ module CPU#(
     .instr_out(db_instr_out),
     .c_sig_out(db_c_sig_out),
     .alu_sig_out(db_alu_sig_out),
-    .imm_out(db_imm_out)
+    .imm_out(db_imm_out),
+    .valid(db_valid)
   );
   
   //ARF
@@ -262,7 +305,10 @@ module CPU#(
     .instr_out0(rs_out0),
     .instr_out1(rs_out1),
     .instr_out2(rs_out2),
-    .instr_valid(rs_valid_out)
+    .instr_valid(rs_valid_out),
+    //Forwarding
+    .bus0(bus0),
+    .bus1(bus1)
   );
   
   fu_table my_fu_table(
@@ -299,6 +345,44 @@ module CPU#(
     .result(alu2_res),
     .valid(alu2_valid),
     .instr_info_out(alu2_instr_info_out)
+  );
+  
+
+  result_buffer my_result_buffer(
+    .clk(clk),
+    .rst(rst),
+    .res0(alu0_res),
+    .valid0(alu0_valid),
+    .info0(alu0_instr_info_out),
+    .res1(alu1_res),
+    .valid1(alu1_valid),
+    .info1(alu1_instr_info_out),
+    .res2(alu2_res),
+    .valid2(alu2_valid),
+    .info2(alu2_instr_info_out),
+    .res0_(rb_res0),
+    .valid0_(rb_valid0),
+    .rd0_(rb_rd0),
+    .res1_(rb_res1),
+    .valid1_(rb_valid1),
+    .rd1_(rb_rd1),
+    .res2_(rb_res2),
+    .valid2_(rb_valid2),
+    .rd2_(rb_rd2)
+  );
+  
+  rob my_rob(
+    .clk(clk),
+    .rd(rename_rrd_out),
+    .rd_old(rename_old_rd_out),
+    .pc(db_pc_out),
+    .wr_en(db_valid),
+    .bus0(bus0),
+    .bus1(bus1),
+    .bus2(bus2),
+    .rob_num(rob_num),
+    .retire0(rob_retire0),
+    .retire1(rob_retire1)
   );
   
   //Writeback

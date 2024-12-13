@@ -1,5 +1,6 @@
 // Read trace into instruction memory
 `include "rs_constants.v"
+`include "rob_constants.v"
 
 module tb;
   reg [31:0] tb_cycle_count;
@@ -14,18 +15,29 @@ module tb;
   wire [5:0] tb_r_rrs1_out;
   wire [5:0] tb_r_rrs2_out;
   wire [31:0] tb_db_instr_out;
+  wire tb_db_valid;
   wire [`RS_WIDTH-1:0] tb_cpu_issue1;
   wire [`RS_WIDTH-1:0] tb_cpu_issue2;
   wire [`RS_WIDTH-1:0] tb_cpu_issue3;
   wire [2:0] tb_cpu_instr_valid;
   wire [2:0] tb_cpu_fu_table_out;
-  wire [2:0] tb_cpu_fu_table_in;
+  wire [2:0] tb_cpu_rs_update;
   wire tb_cpu_alu0_valid;
   wire tb_cpu_alu1_valid;
   wire tb_cpu_alu2_valid;
   wire [31:0] tb_cpu_alu0_res;
   wire [31:0] tb_cpu_alu1_res;
   wire [31:0] tb_cpu_alu2_res;
+  wire [5:0] tb_cpu_rd0;
+  wire [5:0] tb_cpu_rd1;
+  wire [5:0] tb_cpu_rd2;
+  wire [`BUS_WIDTH-1:0] cpu_bus0;
+  wire [`BUS_WIDTH-1:0] cpu_bus1;
+  wire [`BUS_WIDTH-1:0] cpu_bus2;
+  wire [`RETIRE_WIDTH-1:0] tb_cpu_retire0;
+  wire [`RETIRE_WIDTH-1:0] tb_cpu_retire1;
+  
+  
   
   
   
@@ -42,27 +54,33 @@ module tb;
     .cpu_r_rrs1_out(tb_r_rrs1_out),
     .cpu_r_rrs2_out(tb_r_rrs2_out),
     .cpu_db_instr_out(tb_db_instr_out),
+    .cpu_db_valid(tb_db_valid),
     .cpu_issue1(tb_cpu_issue1),
     .cpu_issue2(tb_cpu_issue2),
     .cpu_issue3(tb_cpu_issue3),
     .cpu_instr_valid(tb_cpu_instr_valid),
     .cpu_fu_table_out(tb_cpu_fu_table_out),
-    .cpu_fu_table_in(tb_cpu_fu_table_in),
+    .cpu_rs_update(tb_cpu_rs_update),
     .cpu_alu0_valid(tb_cpu_alu0_valid),
     .cpu_alu1_valid(tb_cpu_alu1_valid),
     .cpu_alu2_valid(tb_cpu_alu2_valid),
     .cpu_alu0_res(tb_cpu_alu0_res),
     .cpu_alu1_res(tb_cpu_alu1_res),
-    .cpu_alu2_res(tb_cpu_alu2_res)
+    .cpu_alu2_res(tb_cpu_alu2_res),
+    .cpu_alu0_rd(tb_cpu_rd0),
+    .cpu_alu1_rd(tb_cpu_rd1),
+    .cpu_alu2_rd(tb_cpu_rd2),
+    .cpu_bus0(cpu_bus0),
+    .cpu_bus1(cpu_bus1),
+    .cpu_bus2(cpu_bus2),
+    .cpu_retire0(tb_cpu_retire0),
+    .cpu_retire1(tb_cpu_retire1)
   );
 
   initial begin
     tb_cycle_count = 32'b0;
     tb_clk = 0;
-    tb_rst = 1;
-    #10;
     tb_rst = 0;
-    #10;
   end
   
   always begin
@@ -77,7 +95,7 @@ module tb;
     $write(" FETCH | instr: %h",tb_f_instr);
     $write(" DECODE | instr: %h c_sig: %b alu_sig: %b, imm: %0d", tb_d_instr, tb_d_c_sig, tb_d_alu_sig, tb_d_imm);
     $write(" RENAME |rrd: %d, rrs1: %d, rrs2: %d", tb_r_rrd_out, tb_r_rrs1_out, tb_r_rrs2_out);
-    $display(" DISPATCH | instr: %h", tb_db_instr_out);
+    $display(" DISPATCH | instr: %h, valid: %b", tb_db_instr_out, tb_db_valid);
     
     //ISSUE
     
@@ -92,18 +110,36 @@ module tb;
     end
     
     
-    //EXECUTION (RESULTS)
-    if(cpu_alu0_valid) begin
-      $display("ALU 0 Result: %d", cpu_alu0_res)
+    //EXECUTION (RESULTS) && BUS Values
+    if(tb_cpu_alu0_valid) begin
+      $display("ALU 0 Result: %d, Rd: %d | BUS, rd: %d, res: %0d", tb_cpu_alu0_res, tb_cpu_rd0, cpu_bus0[`BUS_RD], cpu_bus0[`BUS_RESULT]);
     end
-    if(cpu_alu1_valid) begin
-      $display("ALU 1 Result: %d", cpu_alu1_res)
+    if(tb_cpu_alu1_valid) begin
+      $display("ALU 1 Result: %d Rd: %d | BUS, rd: %d, res: %0d, %b", tb_cpu_alu1_res, tb_cpu_rd1, cpu_bus1[`BUS_RD], cpu_bus1[`BUS_RESULT], cpu_bus1);
 
     end
-    if(cpu_alu2_valid) begin
-      $display("ALU 2 Result: %d", cpu_alu2_res)
+    if(tb_cpu_alu2_valid) begin
+      $display("ALU 2 Result: %d Rd: %d | BUS, rd: %d, res: %0d", tb_cpu_alu2_res, tb_cpu_rd2, cpu_bus2[`BUS_RD], cpu_bus2[`BUS_RESULT]);
     end
+    
+    //RETIRE UP TO TWO INSTRUCTION
+    
+    if(tb_cpu_retire0[`RETIRE_VALID]) begin
+      $display("RETIRE 0 | rd: %d, data: %d, old_rd: %d", tb_cpu_retire0[`RETIRE_RD], tb_cpu_retire0[`RETIRE_DATA], tb_cpu_retire0[`RETIRE_OLDRD]);
+    end
+    if(tb_cpu_retire1[`RETIRE_VALID]) begin
+      $display("RETIRE 1 | rd: %d, data: %d, old_rd: %d", tb_cpu_retire1[`RETIRE_RD], tb_cpu_retire1[`RETIRE_DATA], tb_cpu_retire1[`RETIRE_OLDRD]);
+    end
+    
+    
+    //STATE
+  	$display("FU Table (210): %b", tb_cpu_fu_table_out);
+    
+    
+    
   end
+  
+ 
   
   initial begin
     #200;
