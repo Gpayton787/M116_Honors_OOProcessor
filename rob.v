@@ -49,6 +49,7 @@ module rob#(
   always @(negedge clk)
   begin
     //Debug
+    /*
     if(bus0[`BUS_VALID]) begin
       $display("inside rob... rd: %d, res, %0d %b", bus0[`BUS_RD], bus0[`BUS_RESULT], bus0);
     end
@@ -58,25 +59,23 @@ module rob#(
     if(bus2[`BUS_VALID]) begin
       $display("inside rob..., rd: %d, res, %0d %b", bus1[`BUS_RD], bus1[`BUS_RESULT], bus1);
     end
+    */
     
-    //Iterate over circular buffer
-    for (integer i = head; i != rob_next; i = i+1) begin
-      if (rob_lines[i][`ROB_RD] == bus0[`BUS_RD] && bus0[`BUS_VALID] == 1)
-        begin
-          rob_lines[i][`ROB_DATA] <= bus0[`BUS_RESULT];
-          rob_lines[i][`ROB_COMP] <= 1;
-        end
-      if (rob_lines[i][`ROB_RD] == bus1[`BUS_RD] && bus1[`BUS_VALID] == 1)
-        begin
-          rob_lines[i][`ROB_DATA] <= bus1[`BUS_RESULT];
-          rob_lines[i][`ROB_COMP] <= 1;
-        end
-      if (rob_lines[i][`ROB_RD] == bus2[`BUS_RD] && bus2[`BUS_VALID] == 1)
-        begin
-          rob_lines[i][`ROB_DATA] <= bus2[`BUS_RESULT];
-          rob_lines[i][`ROB_COMP] <= 1;
-        end
-    end
+    if (bus0[`BUS_VALID] == 1)
+      begin
+        rob_lines[bus0[`BUS_ROB]][`ROB_DATA] <= bus0[`BUS_RESULT];
+        rob_lines[bus0[`BUS_ROB]][`ROB_COMP] <= 1;
+      end
+    if (bus1[`BUS_VALID] == 1)
+      begin
+        rob_lines[bus1[`BUS_ROB]][`ROB_DATA] <= bus1[`BUS_RESULT];
+        rob_lines[bus1[`BUS_ROB]][`ROB_COMP] <= 1;
+      end
+    if (bus2[`BUS_VALID] == 1)
+      begin
+        rob_lines[bus2[`BUS_ROB]][`ROB_DATA] <= bus2[`BUS_RESULT];
+        rob_lines[bus2[`BUS_ROB]][`ROB_COMP] <= 1;
+      end
   end
 
   always @(posedge clk) begin // add an entry in parallel with RS entry
@@ -95,13 +94,16 @@ module rob#(
     retire_valid = 2'b11;
     retire0<= 0;
     retire1<= 0;
-    $display("ROB count: %d", count);
+    //$display("ROB count: %d", count);
     
     //DEBUG DISPLAY THE ROB
+    
+    
       for (integer i = head; i != rob_next; i = i+1) begin
       $display("ROB Entry | valid: %b, rd: %d, rd_old: %d, pc: %0h, data: %0d, complete: %b", 
                rob_lines[i][`ROB_VALID], rob_lines[i][`ROB_RD], rob_lines[i][`ROB_OLD], rob_lines[i][`ROB_PC], rob_lines[i][`ROB_DATA], rob_lines[i][`ROB_COMP]);
     end
+    
     
     while (
       	rob_lines[head][`ROB_VALID] == 1 

@@ -1,5 +1,4 @@
 `include "rs_constants.v"
-
 module result_buffer
 (
   input wire clk,
@@ -16,13 +15,19 @@ module result_buffer
   
   output reg [31:0] res0_,
   output reg valid0_,
-  output reg rd0_,
+  output reg [5:0] rob0_,
+  output reg [5:0] rob1_,
+  output reg [5:0] rob2_,
+  output reg [11:0] pc0_,
+  output reg [11:0] pc1_,
+  output reg [11:0] pc2_,
+  output reg [5:0] rd0_,
   output reg [31:0] res1_,
   output reg valid1_,
-  output reg rd1_,
+  output reg [5:0] rd1_,
   output reg [31:0] res2_,
   output reg valid2_,
-  output reg rd2_
+  output reg [5:0] rd2_
 );
   
   always@(posedge clk) begin
@@ -46,6 +51,12 @@ module result_buffer
         res2_ <= res2;
         valid2_ <= valid2;
         rd2_ <= info2[`RS_RD];
+        rob0_ <= info0[`RS_ROB];
+        rob1_ <= info1[`RS_ROB];
+        rob2_ <= info2[`RS_ROB];
+        pc0_ <= info0[`RS_PC];
+        pc1_ <= info1[`RS_PC];
+        pc2_ <= info2[`RS_PC];
     end
   end
 endmodule

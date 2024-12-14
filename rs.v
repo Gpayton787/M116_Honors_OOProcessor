@@ -8,6 +8,7 @@ module rs#(
 (
   //Row inputs
   input wire [31:0] instr,
+  input wire [11:0] pc,
   input wire [2:0] alu_op,
   input wire [31:0] imm,
   input wire [PREG_WIDTH-1:0] rd,
@@ -59,12 +60,14 @@ end
   begin
     
     //Debug
+    /*
     if(bus0[`BUS_VALID]) begin
       $display("inside rs... rd: %d, res, %0d %b", bus0[`BUS_RD], bus0[`BUS_RESULT], bus0);
     end
     if(bus1[`BUS_VALID]) begin
       $display("inside rs..., rd: %d, res, %0d %b", bus1[`BUS_RD], bus1[`BUS_RESULT], bus1);
     end
+    */
     
     for (integer i = 0; i < 64; i = i+1) begin
       if (queue[i][`RS_SRC1] == bus0[`BUS_RD] && bus0[`BUS_VALID] == 1)
@@ -102,7 +105,7 @@ begin
   //Issue logic
   for (integer i = 0; i < 64; i = i+1) begin
     if(queue[i][`RS_USE]) begin
-      $display("RS| USE %b, OP %b, RD %d, RS1 %d, DATA1 %d, RDY1 %b, RS2 %d, DATA2 %d, RDY2 %b, IMM, %d, FU %d, ROB %d", queue[i][`RS_USE], queue[i][`RS_OP], queue[i][`RS_RD], queue[i][`RS_SRC1], queue[i][`RS_DATA1], queue[i][`RS_RDY1], queue[i][`RS_SRC2], queue[i][`RS_DATA2], queue[i][`RS_RDY2], queue[i][`RS_IMM], queue[i][`RS_FU], queue[i][`RS_ROB]);
+      $display("RS| USE %b, PC: %h, OP %b, RD %d, RS1 %d, DATA1 %d, RDY1 %b, RS2 %d, DATA2 %d, RDY2 %b, IMM, %d, FU %d, ROB %d", queue[i][`RS_USE], queue[i][`RS_PC], queue[i][`RS_OP], queue[i][`RS_RD], queue[i][`RS_SRC1], queue[i][`RS_DATA1], queue[i][`RS_RDY1], queue[i][`RS_SRC2], queue[i][`RS_DATA2], queue[i][`RS_RDY2], queue[i][`RS_IMM], queue[i][`RS_FU], queue[i][`RS_ROB]);
     end
     
     if (
@@ -146,9 +149,9 @@ begin
   
   	//If opcode is not zero, reserve an entry
     if(opcode!=0) begin
-      queue[rs_pointer] <= {1'b1, alu_op, funct3, c_sigs, opcode, rd, src1, data1, ready1, src2, data2, ready2, imm, fu_pos, rob_num};
+      queue[rs_pointer] <= {1'b1, pc, alu_op, funct3, c_sigs, opcode, rd, src1, data1, ready1, src2, data2, ready2, imm, fu_pos, rob_num};
       
-      $display("Reserving entry | alu_op: %b f3: %b, c_sigs: %b, opcode: %b, rd: %0d, src1: %0d, data1: %h, ready1: %b, src2: %0d, data2: %h, ready2: %b, imm: %0d, fu_pos: %b, rob_num, %h", alu_op, funct3, c_sigs, opcode, rd, src1, data1, ready1, src2, data2, ready2, imm, fu_pos, rob_num);
+      //$display("Reserving entry | alu_op: %b f3: %b, c_sigs: %b, opcode: %b, rd: %0d, src1: %0d, data1: %h, ready1: %b, src2: %0d, data2: %h, ready2: %b, imm: %0d, fu_pos: %b, rob_num, %h", alu_op, funct3, c_sigs, opcode, rd, src1, data1, ready1, src2, data2, ready2, imm, fu_pos, rob_num);
       
 
         rs_pointer <= rs_pointer + 1;

@@ -36,6 +36,8 @@ module tb;
   wire [`BUS_WIDTH-1:0] cpu_bus2;
   wire [`RETIRE_WIDTH-1:0] tb_cpu_retire0;
   wire [`RETIRE_WIDTH-1:0] tb_cpu_retire1;
+  wire [11:0] tb_cpu_fb_pc_out;
+  wire [11:0] tb_cpu_db_pc_out;
   
   
   
@@ -74,7 +76,10 @@ module tb;
     .cpu_bus1(cpu_bus1),
     .cpu_bus2(cpu_bus2),
     .cpu_retire0(tb_cpu_retire0),
-    .cpu_retire1(tb_cpu_retire1)
+    .cpu_retire1(tb_cpu_retire1),
+    .cpu_fb_pc_out(tb_cpu_fb_pc_out),
+    .cpu_db_pc_out(tb_cpu_db_pc_out)
+    
   );
 
   initial begin
@@ -92,21 +97,21 @@ module tb;
     $display("Cycle: %0d ", tb_cycle_count);
     
     //FETCH, DECODE, RENAME, DISPATCH
-    $write(" FETCH | instr: %h",tb_f_instr);
-    $write(" DECODE | instr: %h c_sig: %b alu_sig: %b, imm: %0d", tb_d_instr, tb_d_c_sig, tb_d_alu_sig, tb_d_imm);
+    $write(" FETCH | instr: %h ", tb_f_instr);
+    $write(" DECODE | instr: %h, pc: %h, c_sig: %b alu_sig: %b, imm: %0d", tb_d_instr, tb_cpu_fb_pc_out, tb_d_c_sig, tb_d_alu_sig, tb_d_imm);
     $write(" RENAME |rrd: %d, rrs1: %d, rrs2: %d", tb_r_rrd_out, tb_r_rrs1_out, tb_r_rrs2_out);
-    $display(" DISPATCH | instr: %h, valid: %b", tb_db_instr_out, tb_db_valid);
+    $display(" DISPATCH | instr: %h, valid: %b, pc: %h", tb_db_instr_out, tb_db_valid, tb_cpu_db_pc_out);
     
     //ISSUE
     
     if(tb_cpu_instr_valid[0] == 1) begin
-      $display(" ISSUE from port 0 | opcode: %b | rd: %d | imm: %0d", tb_cpu_issue1[`RS_OP], tb_cpu_issue1[`RS_RD], tb_cpu_issue1[`RS_IMM]);
+      $display(" ISSUE from port 0 | opcode: %b | rd: %d | imm: %0d | alu_op: %b", tb_cpu_issue1[`RS_OP], tb_cpu_issue1[`RS_RD], tb_cpu_issue1[`RS_IMM], tb_cpu_issue1[`RS_ALU_OP]);
     end
     if(tb_cpu_instr_valid[1] == 1) begin
-      $display(" ISSUE from port 1 | opcode: %b | rd: %d | imm: %0d", tb_cpu_issue2[`RS_OP], tb_cpu_issue2[`RS_RD], tb_cpu_issue2[`RS_IMM]);
+      $display(" ISSUE from port 1 | opcode: %b | rd: %d | imm: %0d, alu_op: %b", tb_cpu_issue2[`RS_OP], tb_cpu_issue2[`RS_RD], tb_cpu_issue2[`RS_IMM], tb_cpu_issue2[`RS_ALU_OP]);
     end
     if(tb_cpu_instr_valid[2] == 1) begin
-      $display(" ISSUE from port 2 | opcode: %b | rd: %d | imm: %0d", tb_cpu_issue3[`RS_OP], tb_cpu_issue3[`RS_RD], tb_cpu_issue3[`RS_IMM]);
+      $display(" ISSUE from port 2 | opcode: %b | rd: %d | imm: %0d, alu_op: %b", tb_cpu_issue3[`RS_OP], tb_cpu_issue3[`RS_RD], tb_cpu_issue3[`RS_IMM], tb_cpu_issue3[`RS_ALU_OP]);
     end
     
     
@@ -133,7 +138,7 @@ module tb;
     
     
     //STATE
-  	$display("FU Table (210): %b", tb_cpu_fu_table_out);
+  	//$display("FU Table (210): %b", tb_cpu_fu_table_out);
     
     
     

@@ -49,7 +49,10 @@ module CPU#(
   output wire [`BUS_WIDTH-1:0] cpu_bus1,
   output wire [`BUS_WIDTH-1:0] cpu_bus2,
   output wire [`RETIRE_WIDTH-1:0] cpu_retire0,
-  output wire [`RETIRE_WIDTH-1:0] cpu_retire1
+  output wire [`RETIRE_WIDTH-1:0] cpu_retire1,
+  output wire [11:0] cpu_fb_pc_out,
+  output wire [11:0] cpu_db_pc_out
+  
 );
   //Parameters
   parameter PREG_WIDTH = 6;
@@ -95,7 +98,7 @@ module CPU#(
   wire full;
   
   assign r_reg_write = db_c_sig_out[`REG_WRITE];
-  assign rd = db_instr_out[11:7];
+  assign rd = r_reg_write ? db_instr_out[11:7] : 0; //make rd idx 0 if we don't write to reg
   assign rs1 = db_instr_out[19:15];
   assign rs2 = db_instr_out[24:20];
   
@@ -147,11 +150,17 @@ module CPU#(
   wire [31:0] rb_res2;
   wire rb_valid2;
   wire [5:0] rb_rd2;
+  wire [5:0] rb_rob0;
+  wire [5:0] rb_rob1;
+  wire [5:0] rb_rob2;
+  wire [11:0] rb_pc0;
+  wire [11:0] rb_pc1;
+  wire [11:0] rb_pc2;
   
   //BUS wires
-  wire [`BUS_WIDTH-1:0] bus0 = {rb_valid0, rb_res0, rb_rd0};
-  wire [`BUS_WIDTH-1:0] bus1 = {rb_valid1, rb_res1, rb_rd1};
-  wire [`BUS_WIDTH-1:0] bus2 = {rb_valid2, rb_res2, rb_rd2};
+  wire [`BUS_WIDTH-1:0] bus0 = {rb_valid0, rb_pc0, rb_res0, rb_rd0, rb_rob0};
+  wire [`BUS_WIDTH-1:0] bus1 = {rb_valid1, rb_pc1, rb_res1, rb_rd1, rb_rob1};
+  wire [`BUS_WIDTH-1:0] bus2 = {rb_valid2, rb_pc2, rb_res2, rb_rd2, rb_rob2};
   assign cpu_bus0 = bus0;
   assign cpu_bus1 = bus1;
   assign cpu_bus2 = bus2;
@@ -211,6 +220,8 @@ module CPU#(
   assign cpu_alu2_rd = rb_rd2;
   assign cpu_retire0 = rob_retire0;
   assign cpu_retire1 = rob_retire1;
+  assign cpu_fb_pc_out = fb_pc_out;
+  assign cpu_db_pc_out = db_pc_out;
   
   
   //Module instantiations
@@ -271,7 +282,9 @@ module CPU#(
     .rs1_data(areg_data1_out),
     .rs2_data(areg_data2_out),
     .rs1_ready(areg_ready1_out),
-    .rs2_ready(areg_ready2_out)
+    .rs2_ready(areg_ready2_out),
+    .retire0(rob_retire0),
+    .retire1(rob_retire1)
   );
   
   //Free Pool
@@ -289,6 +302,7 @@ module CPU#(
   rs my_rs(
     .clk(clk),
     .instr(db_instr_out),
+    .pc(db_pc_out),
     .alu_op(db_alu_sig_out),
     .imm(db_imm_out),
     .rd(rename_rrd_out),
@@ -368,7 +382,13 @@ module CPU#(
     .rd1_(rb_rd1),
     .res2_(rb_res2),
     .valid2_(rb_valid2),
-    .rd2_(rb_rd2)
+    .rd2_(rb_rd2),
+    .rob0_(rb_rob0),
+    .rob1_(rb_rob1),
+    .rob2_(rb_rob2),
+    .pc0_(rb_pc0),
+    .pc1_(rb_pc1),
+    .pc2_(rb_pc2)
   );
   
   rob my_rob(

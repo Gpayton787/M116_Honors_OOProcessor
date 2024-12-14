@@ -1,7 +1,7 @@
-`include "alu_constants.v" 
+`include "rob_constants.v"
 
 module areg_file#(
-  PREG_WIDTH = 6,
+  parameter PREG_WIDTH = 6,
   DATA_WIDTH = 32,
   AREG_WIDTH = 5,
   NUM_AREG = 32,
@@ -17,17 +17,17 @@ module areg_file#(
   input wire reg_write,
   input wire [PREG_WIDTH-1:0] rd_tag,
   
-  //ALU
-  input wire [`ALU_WIDTH-1:0] alu0_in,
-  input wire [`ALU_WIDTH-1:0] alu1_in,
- 
+  //REGISTER WRITEBACK
+  input wire [`RETIRE_WIDTH-1:0] retire0,
+  input wire [`RETIRE_WIDTH-1:0] retire1,
+  
   output reg [DATA_WIDTH-1:0] rs1_data,
   output reg [DATA_WIDTH-1:0] rs2_data,
   output reg [PREG_WIDTH-1:0] rs1_tag,
   output reg [PREG_WIDTH-1:0] rs2_tag,
+  output reg [PREG_WIDTH-1:0] rd_old_tag,
   output reg rs1_ready,
-  output reg rs2_ready,
-  output reg [PREG_WIDTH-1:0] rd_old_tag
+  output reg rs2_ready
 
 );
   //Declare register file memory
@@ -39,7 +39,7 @@ module areg_file#(
   reg [PREG_WIDTH-1:0] tag_mem[0:NUM_AREG-1];
   
   //DATA
-  reg [DATA_WIDTH-1:0] data_mem[0:NUM_AREG-1];
+  reg [DATA_WIDTH-1:0] data_mem[0:NUM_PREG-1];
 
   //Initialize memory
   initial begin 
@@ -53,7 +53,7 @@ module areg_file#(
     end
     
     //INIT DATA TO 0's
-    for (integer i = 0; i < NUM_AREG; i = i+1) begin
+    for (integer i = 0; i < NUM_PREG; i = i+1) begin
       data_mem[i] = 0;
     end
   end
@@ -72,38 +72,31 @@ module areg_file#(
         tag_mem[rd_tag_idx] <= rd_tag;
         ready_mem[rd_tag] <= 0;
       end
-    end
+    end  
 end
-
-  //Writeback from ALU
-  always @(negedge clk) begin
-    //$display("Writeback %d, %d", alu1_in[`ALU_REG], alu1_in[`ALU_RESULT]);
-    if (alu0_in[`ALU_READY] == 1) begin
-      for (integer i = 0; i < NUM_AREG; i = i+1) begin
-        if (alu0_in[`ALU_REG] == tag_mem[i]) begin
-          
-          data_mem[i] <= alu0_in[`ALU_RESULT];
-          ready_mem[tag_mem[i]] <= 1;
-        end
-      end
-    end
-    if (alu1_in[`ALU_READY] == 1) begin
-      for (integer i = 0; i < NUM_AREG; i = i+1) begin
-        if (alu1_in[`ALU_REG] == tag_mem[i]) begin
-          data_mem[i] <= alu1_in[`ALU_RESULT];
-          ready_mem[tag_mem[i]] <= 1;
-        end
-      end
-    end
+  
+  //Retire writebacks @neg_edge
+always @(negedge clk) begin
+  if(retire0[`RETIRE_VALID] == 1) begin
+    $display("WRITING TO REGFILE 0 | rd: %d, data: %d", retire0[`RETIRE_RD], retire0[`RETIRE_DATA]);
+    data_mem[retire0[`RETIRE_RD]] <= retire0[`RETIRE_DATA];
+    ready_mem[retire0[`RETIRE_RD]] <= 1;
   end
+  if(retire1[`RETIRE_VALID] == 1) begin
+    $display("WRITING TO REGFILE 1 | rd: %d, data: %d", retire1[`RETIRE_RD], retire1[`RETIRE_DATA]);
+    data_mem[retire1[`RETIRE_RD]] <= retire1[`RETIRE_DATA];
+    ready_mem[retire1[`RETIRE_RD]] <= 1;
+  end
+end
+  
  
 //Combinational block for reads
 always @(*) begin
   rd_old_tag = tag_mem[rd_tag_idx];
   rs1_tag = tag_mem[rs1_tag_idx];
   rs2_tag = tag_mem[rs2_tag_idx];
-  rs1_data = data_mem[rs1_tag_idx];
-  rs2_data = data_mem[rs2_tag_idx];
+  rs1_data = data_mem[rs1_tag];
+  rs2_data = data_mem[rs2_tag];
   rs1_ready = ready_mem[rs1_tag];
   rs2_ready = ready_mem[rs2_tag];
 end
