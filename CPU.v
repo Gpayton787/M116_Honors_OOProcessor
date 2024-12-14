@@ -164,11 +164,17 @@ module CPU#(
 
   
   //ROB OUTPUTS
-  wire rob_push;
-  wire [PREG_WIDTH-1:0] rob_free_reg;
+  wire rob_push1;
+  wire rob_push2;
+  wire [PREG_WIDTH-1:0] rob_free_reg1;
+  wire [PREG_WIDTH-1:0] rob_free_reg2;
   wire [`RETIRE_WIDTH-1:0] rob_retire0;
   wire [`RETIRE_WIDTH-1:0] rob_retire1;
   wire [5:0] rob_num;
+  assign rob_push1 = rob_retire0[`RETIRE_VALID];
+  assign rob_push2 = rob_retire1[`RETIRE_VALID];
+  assign rob_free_reg1 = rob_retire0[`RETIRE_OLDRD];
+  assign rob_free_reg2 = rob_retire1[`RETIRE_OLDRD];
   
 
   //LSQ WIRES
@@ -286,9 +292,11 @@ module CPU#(
   free_pool my_free_pool(
     .clk(clk),
     .rst(rst),
-    .push(rob_push),
+    .push1(rob_push1),
+    .push2(rob_push2),
     .pop(r_reg_write),
-    .data_in(rob_free_reg),
+    .data_in1(rob_free_reg1),
+    .data_in2(rob_free_reg2),
     .data_out(rename_rrd_out),
     .empty(empty),
     .full(full)
