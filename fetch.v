@@ -1,42 +1,36 @@
 module fetch(
   input clk,
-  output wire [31:0] instr_out,
-  output wire [11:0] pc_out
+  input rst,
+  output reg [31:0] instr_out,
+  output reg [11:0] pc_out
 );
-  wire [11:0] pc_adder_to_pc;
-  reg reset;
-  reg pc_write;
-  wire [11:0] curr_pc;
+ 
+  reg [11:0] pc;
   
-  initial begin
-    reset = 0;
-    pc_write = 1;
-  end
-  
-  PC my_pc(
-    .pc_next(pc_adder_to_pc),
-    .reset(reset),
-    .clk(clk),
-    .pc_write(pc_write),
-    .pc_current(curr_pc)
-  );
-  PCAdder my_pc_adder(
-    .curr_pc(curr_pc),
-    .new_pc(pc_adder_to_pc)
-  );
   single_port_ROM my_ROM(
-    .addr(curr_pc),
+    .addr(pc),
     .dout(instr_out)
   );
-  
-  assign pc_out = curr_pc;
+  initial begin
+    pc <= 0;
+    pc_out<=0;
+  end
   
   always @(posedge clk) begin
-    if(instr_out == 32'b0) pc_write = 0;
+    if(rst) begin
+      pc <= 0;
+      pc_out <= 0;
+    end else begin
+      if(instr_out != 32'b0) begin
+        pc <= pc+4;
+        pc_out <= pc+4;
+        end
+    end
   end
 
 endmodule
 
+/*
 module PC
 (
   input wire [11:0] pc_next,
@@ -72,6 +66,7 @@ module PCAdder
         new_pc <= curr_pc + 4;
     end
 endmodule
+*/
 
 module single_port_ROM 
 #(
@@ -92,9 +87,7 @@ module single_port_ROM
     for (i = 0; i < 2**ADDR_WIDTH; i = i + 1) begin
       mem[i] = 8'b0;
     end
-    $readmemh("test.txt", mem, 0, 47);
+    $readmemh("final.txt", mem, 0, 71);
   end
-
-  assign dout = {mem[addr], mem[addr+1], mem[addr+2], mem[addr+3]}; 
-
+  assign dout = {mem[addr+3], mem[addr+2], mem[addr+1], mem[addr]}; 
 endmodule

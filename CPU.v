@@ -5,7 +5,6 @@
 `include "areg_file.v"
 `include "decode_buffer.v"
 `include "lsq.sv"
-`include "single_port_mem.v"
 `include "fu_table.v"
 `include "rs.v"
 `include "rs_constants.v"
@@ -52,7 +51,6 @@ module CPU#(
   output wire [`RETIRE_WIDTH-1:0] cpu_retire1,
   output wire [11:0] cpu_fb_pc_out,
   output wire [11:0] cpu_db_pc_out
-  
 );
   //Parameters
   parameter PREG_WIDTH = 6;
@@ -147,20 +145,19 @@ module CPU#(
   wire [31:0] rb_res1;
   wire rb_valid1;
   wire [5:0] rb_rd1;
-  wire [31:0] rb_res2;
-  wire rb_valid2;
-  wire [5:0] rb_rd2;
   wire [5:0] rb_rob0;
   wire [5:0] rb_rob1;
-  wire [5:0] rb_rob2;
   wire [11:0] rb_pc0;
   wire [11:0] rb_pc1;
-  wire [11:0] rb_pc2;
+  wire mem_valid;
+  wire [31:0] mem_res;
+  wire [`RS_WIDTH-1:0] mem_info;
+
   
   //BUS wires
   wire [`BUS_WIDTH-1:0] bus0 = {rb_valid0, rb_pc0, rb_res0, rb_rd0, rb_rob0};
   wire [`BUS_WIDTH-1:0] bus1 = {rb_valid1, rb_pc1, rb_res1, rb_rd1, rb_rob1};
-  wire [`BUS_WIDTH-1:0] bus2 = {rb_valid2, rb_pc2, rb_res2, rb_rd2, rb_rob2};
+  wire [`BUS_WIDTH-1:0] bus2; //BUS TWO COMES FROM LSQ
   assign cpu_bus0 = bus0;
   assign cpu_bus1 = bus1;
   assign cpu_bus2 = bus2;
@@ -172,6 +169,7 @@ module CPU#(
   wire [`RETIRE_WIDTH-1:0] rob_retire0;
   wire [`RETIRE_WIDTH-1:0] rob_retire1;
   wire [5:0] rob_num;
+  
 
   //LSQ WIRES
   wire [31:0] lsq_address_in;  
@@ -211,13 +209,10 @@ module CPU#(
   assign cpu_rs_update = rs_update;
   assign cpu_alu0_valid = rb_valid0;
   assign cpu_alu1_valid = rb_valid1;
-  assign cpu_alu2_valid = rb_valid2;
   assign cpu_alu0_res = rb_res0;
   assign cpu_alu1_res = rb_res1;
-  assign cpu_alu2_res = rb_res2;
   assign cpu_alu0_rd = rb_rd0;
   assign cpu_alu1_rd = rb_rd1;
-  assign cpu_alu2_rd = rb_rd2;
   assign cpu_retire0 = rob_retire0;
   assign cpu_retire1 = rob_retire1;
   assign cpu_fb_pc_out = fb_pc_out;
@@ -322,7 +317,10 @@ module CPU#(
     .instr_valid(rs_valid_out),
     //Forwarding
     .bus0(bus0),
-    .bus1(bus1)
+    .bus1(bus1),
+    .bus2(bus2),
+    .retire0(rob_retire0),
+    .retire1(rob_retire1)
   );
   
   fu_table my_fu_table(
@@ -380,15 +378,13 @@ module CPU#(
     .res1_(rb_res1),
     .valid1_(rb_valid1),
     .rd1_(rb_rd1),
-    .res2_(rb_res2),
-    .valid2_(rb_valid2),
-    .rd2_(rb_rd2),
     .rob0_(rb_rob0),
     .rob1_(rb_rob1),
-    .rob2_(rb_rob2),
     .pc0_(rb_pc0),
     .pc1_(rb_pc1),
-    .pc2_(rb_pc2)
+    .mem_valid(mem_valid),
+    .mem_res(mem_res),
+    .mem_info(mem_info)
   );
   
   rob my_rob(
@@ -407,21 +403,21 @@ module CPU#(
   
   //Writeback
   
-  /*
+  
   lsq my_lsq(
     .clk(clk),
  	.rst(rst),
     .wr_en(di_mem_re || di_mem_wr),
     .opcode(db_opcode),
     .pc(db_pc_out),
-    .address_in(lsq_address_in),   
-    .data_in(lsq_data_in),  
-  // Outputs
-    .curr_entry(lsq_curr_entry),
-    .address_out(lsq_address_out),       
-    .data_out(lsq_data_out)    
+    .bus2(bus2),
+  // MEMRES INPUTS
+    .mem_valid(mem_valid),
+    .mem_res(mem_res),
+    .mem_info(mem_info)
   );
   
+  /*
   //Main Memory
   single_port_mem my_single_port_mem(
     .clk(clk),

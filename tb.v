@@ -79,7 +79,6 @@ module tb;
     .cpu_retire1(tb_cpu_retire1),
     .cpu_fb_pc_out(tb_cpu_fb_pc_out),
     .cpu_db_pc_out(tb_cpu_db_pc_out)
-    
   );
 
   initial begin

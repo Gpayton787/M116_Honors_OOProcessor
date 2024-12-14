@@ -1,4 +1,3 @@
-
 module fetch_buffer
 #(
     parameter ADDR_WIDTH = 12,
@@ -6,21 +5,27 @@ module fetch_buffer
 )
 (
   input wire clk,
+  input wire rst,
   input wire [ADDR_WIDTH-1: 0] pc_in,
-  input [INSTR_WIDTH-1: 0] instr_in,
-  output wire [ADDR_WIDTH-1: 0] pc_out,
-  output [INSTR_WIDTH-1: 0] instr_out
+  input wire [INSTR_WIDTH-1: 0] instr_in,
+  output reg [ADDR_WIDTH-1: 0] pc_out,
+  output reg [INSTR_WIDTH-1: 0] instr_out
   
 );
-  reg [ADDR_WIDTH-1: 0] pc;
-  reg [INSTR_WIDTH-1: 0] instr;
+  
+  initial begin
+    pc_out = 0;
+    instr_out = 0;
+  end
   
   always@(posedge clk) begin
-    pc <= pc_in;
-    instr <= instr_in;
+    if(rst) begin
+      pc_out <= 0;
+      instr_out <= 0;
+    end else begin
+      //Update buffer
+      pc_out <= pc_in;
+      instr_out <= instr_in;  
+    end
   end
-
-  assign pc_out = pc;
-  assign instr_out = instr;
-
 endmodule

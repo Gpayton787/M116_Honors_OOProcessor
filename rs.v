@@ -1,5 +1,6 @@
 `include "constants.v"
 `include "rs_constants.v"
+`include "rob_constants.v"
 
 module rs#(
   PREG_WIDTH = 6,
@@ -25,8 +26,11 @@ module rs#(
   input wire [2:0] fu_table_in,
   input wire clk,
   input wire [5:0] rob_num,
+  input wire [`RETIRE_WIDTH-1:0] retire0,
+  input wire [`RETIRE_WIDTH-1:0] retire1,
   input wire [`BUS_WIDTH-1:0] bus0,
   input wire [`BUS_WIDTH-1:0] bus1,
+  input wire [`BUS_WIDTH-1:0] bus2,
   
 
   //Outputs
@@ -43,10 +47,11 @@ module rs#(
 
   wire [6:0] opcode;
   wire [2:0] funct3;
-  reg [1:0] fu_pos;
+  wire [1:0] fu_pos;
   
   assign opcode = instr[6:0];
   assign funct3 = instr[14:12];
+  assign fu_pos = (c_sigs[`MEMRE] | c_sigs[`MEMWR]) ? 2'b10 : next_alu;
 
 initial begin
   	instr_valid = 3'b000; // no instructions ready to issue
@@ -55,7 +60,7 @@ initial begin
   	fu_table_out = 3'b111;
 end
 
-  //Writeback from alu
+  //Writeback from alu and retire
   always @(negedge clk)
   begin
     
@@ -89,6 +94,27 @@ end
       if (queue[i][`RS_SRC2] == bus1[`BUS_RD] && bus1[`BUS_VALID] == 1)
         begin
           queue[i][`RS_DATA2] <= bus1[`BUS_RESULT];
+          queue[i][`RS_RDY2] <= 1;
+       	end
+      if (queue[i][`RS_SRC1] == bus2[`BUS_RD] && bus2[`BUS_VALID] == 1)
+        begin
+          //$display("WRITE RESULT %b", alu0_in);
+          queue[i][`RS_DATA1] <= bus2[`BUS_RESULT];
+          queue[i][`RS_RDY1] <= 1;
+        end
+      if (queue[i][`RS_SRC2] == bus2[`BUS_RD] && bus2[`BUS_VALID] == 1)
+        begin
+          queue[i][`RS_DATA2] <= bus2[`BUS_RESULT];
+          queue[i][`RS_RDY2] <= 1;
+       	end
+      if (queue[i][`RS_SRC2] == retire0[`RETIRE_RD] && retire0[`RETIRE_VALID] == 1)
+        begin
+          queue[i][`RS_DATA2] <= retire0[`RETIRE_DATA];
+          queue[i][`RS_RDY2] <= 1;
+       	end
+      if (queue[i][`RS_SRC2] == retire1[`RETIRE_RD] && retire1[`RETIRE_VALID] == 1)
+        begin
+          queue[i][`RS_DATA2] <= retire1[`RETIRE_DATA];
           queue[i][`RS_RDY2] <= 1;
        	end
     end
@@ -138,20 +164,14 @@ end
 
   always @(posedge clk) //dispatch
 begin
-    case (opcode)
-        7'b0000011 : fu_pos = 2'b10; //lb, lw
-        7'b0100011 : fu_pos = 2'b10; //sb, sw
-        default : begin
-            fu_pos <= next_alu;
-            next_alu <= !next_alu;
-        end
-    endcase
+	//Round robin for alu
+    next_alu <= !next_alu;
   
   	//If opcode is not zero, reserve an entry
     if(opcode!=0) begin
       queue[rs_pointer] <= {1'b1, pc, alu_op, funct3, c_sigs, opcode, rd, src1, data1, ready1, src2, data2, ready2, imm, fu_pos, rob_num};
       
-      //$display("Reserving entry | alu_op: %b f3: %b, c_sigs: %b, opcode: %b, rd: %0d, src1: %0d, data1: %h, ready1: %b, src2: %0d, data2: %h, ready2: %b, imm: %0d, fu_pos: %b, rob_num, %h", alu_op, funct3, c_sigs, opcode, rd, src1, data1, ready1, src2, data2, ready2, imm, fu_pos, rob_num);
+      $display("Reserving entry | alu_op: %b f3: %b, c_sigs: %b, opcode: %b, rd: %0d, src1: %0d, data1: %h, ready1: %b, src2: %0d, data2: %h, ready2: %b, imm: %0d, fu_pos: %b, rob_num, %h", alu_op, funct3, c_sigs, opcode, rd, src1, data1, ready1, src2, data2, ready2, imm, fu_pos, rob_num);
       
 
         rs_pointer <= rs_pointer + 1;

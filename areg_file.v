@@ -74,6 +74,12 @@ module areg_file#(
       end
     end  
 end
+//PRINT AREG FILE
+always @(posedge clk) begin
+      for (integer i = 0; i < NUM_AREG; i = i+1) begin
+        $display("x%0d: %d", i, data_mem[tag_mem[i]]);
+      end
+end
   
   //Retire writebacks @neg_edge
 always @(negedge clk) begin

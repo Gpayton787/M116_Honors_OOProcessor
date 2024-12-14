@@ -49,7 +49,7 @@ module rob#(
   always @(negedge clk)
   begin
     //Debug
-    /*
+    
     if(bus0[`BUS_VALID]) begin
       $display("inside rob... rd: %d, res, %0d %b", bus0[`BUS_RD], bus0[`BUS_RESULT], bus0);
     end
@@ -57,9 +57,9 @@ module rob#(
       $display("inside rob..., rd: %d, res, %0d %b", bus1[`BUS_RD], bus1[`BUS_RESULT], bus1);
     end
     if(bus2[`BUS_VALID]) begin
-      $display("inside rob..., rd: %d, res, %0d %b", bus1[`BUS_RD], bus1[`BUS_RESULT], bus1);
+      $display("inside rob..., rd: %d, res, %0d, pc:%h, %b", bus2[`BUS_RD], bus2[`BUS_RESULT], bus2[`BUS_PC], bus2);
     end
-    */
+    
     
     if (bus0[`BUS_VALID] == 1)
       begin

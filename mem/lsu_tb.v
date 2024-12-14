@@ -1,4 +1,5 @@
-`include "constants.v"
+// Code your testbench here
+// or browse Examples
 
 module tb;
   parameter ADDR_WIDTH = 20;
@@ -6,57 +7,62 @@ module tb;
 
   reg clk;
   reg rst;
-  reg cs;
+  reg en;
   reg we;
   reg oe;
   reg [ADDR_WIDTH-1:0] to_mem_addr;
-  wire [31:0] mem_data;
-  reg [31:0] tb_data;
-
-  reg en;
-  reg [ADDR_WIDTH-1:0] to_lsu_addr;
-  reg ls;
-  reg [31:0] to_lsu_data;
-  reg [11:0] to_lsu_pc;
-
-  
+  reg [31:0] wr_data;
+  wire [31:0] re_data;
+  reg cycle_count;
+  reg mem_done_flag;
   
 
-  single_port_mem #(.DATA_WIDTH(DATA_WIDTH)) u0
+  single_port_mem u0
   ( 	
-    .clk(clk),
+   .clk(clk),
    .rst(rst),
    .address(to_mem_addr),
-   .data(mem_data),
-   .cs(cs),
+   .data_in(wr_data),
+   .data_out(re_data),
+   .en(en),
    .mem_wr(we),
-   .mem_re(oe)
+   .mem_re(oe),
+   .mem_done(mem_done_flag)
   );
 
-  lsu u1 (
-    .clk(clk),
-    .rst(rst),
-    .en(en),
-    .address_in(to_lsu_addr),
-    .ls(ls),
-    .data_in(to_lsu_data),
-    .pc_in(to_lsu_pc),
-    .ret_data(mem_data),
-    .mem_done(),
-    .data_out(),
-    .mem_wr(),
-    .mem_re(),
-    .pc_out(),
-    .load_data()
-  )
+  initial begin
+    cycle_count = 32'b0;
+    clk = 0;
+    rst = 0;
+  end
   
-  
-
-
   always #5 clk = ~clk;
   
+  always @(posedge clk) begin
+    if(mem_done_flag) begin
+      $display("Reading: %d", re_data);
+    end
+  end
+  
   initial begin
-    #200 $finish;
+    en = 1;
+    we = 1;
+    wr_data = 7;
+    to_mem_addr = 4;
+    #10
+    en = 1;
+    we = 0;
+    wr_data = 0;
+    to_mem_addr = 0;
+    #120
+    en = 1;
+    oe = 1;
+    to_mem_addr = 4;
+    #10
+    en = 1;
+    oe = 0;
+    to_mem_addr = 0;
+    #300 $finish;
   end
 
 endmodule

@@ -1,3 +1,4 @@
+// Code your design here
 module single_port_mem #(
     parameter LATENCY = 10,
     parameter ADDR_WIDTH = 20
@@ -5,7 +6,7 @@ module single_port_mem #(
 (
     input clk,
     input rst,
-    input cs,
+    input en,
     input mem_re,
     input mem_wr,
     input wire [ADDR_WIDTH-1 : 0] address,
@@ -21,10 +22,17 @@ module single_port_mem #(
   	reg pending_mem_wr;
     reg [ADDR_WIDTH-1:0] pending_address; // Address in process
     reg [31:0] pending_data;    // Data to write during a write operation
+  
+  	initial begin
+      counter <= 0;
+      busy <= 0;
+      mem_done <= 0;
+      data_out <= 0;
+    end
 
     always @(posedge clk or posedge rst) begin
       
-      $display("busy: %b, counter: %d, pending_address: %0h, pending_data: %0h", busy, counter, pending_address, pending_data);
+      //$display("busy: %b, counter: %d, pending_address: %0h, pending_data: %0h", busy, counter, pending_address, pending_data);
       
         if(rst) begin
             counter <= 0;
@@ -33,7 +41,7 @@ module single_port_mem #(
             data_out <= 0;
         end else begin
             //If we're not busy and we're enabled
-            if(!busy && cs) begin
+          if(!busy && en) begin
                 //If we're a read or write
                 if(mem_wr || mem_re) begin
                   	pending_mem_wr <= mem_wr;
@@ -60,9 +68,11 @@ module single_port_mem #(
                   	$display("set data out");
                     data_out <= mem[pending_address];
                 end
-
                 busy <= 0;
                 mem_done <= 1;
+            end
+            else begin
+              mem_done <= 0;
             end
         end
     end
